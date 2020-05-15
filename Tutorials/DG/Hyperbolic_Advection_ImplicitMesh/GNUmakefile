@@ -2,12 +2,19 @@
 AMREX_HOME ?= ../../../
 #######################################################################
 
-COMP = gnu
+
+
 DEBUG = TRUE
-USE_MPI = FALSE	
+DIM = 2
+
+COMP = gcc
+CXXSTD = c++14
+
+USE_MPI = FALSE
+
 USE_CUDA = FALSE
 
-DIM = 2
+
 
 include ./Make.package
 
