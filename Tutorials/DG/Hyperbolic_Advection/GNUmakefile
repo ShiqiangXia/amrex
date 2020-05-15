@@ -4,13 +4,16 @@ AMREX_HOME ?= ../../..
 
 DEBUG = TRUE
 
+DIM = 2
+
 COMP    = gcc
 CXXSTD = c++14
 
 USE_MPI = TRUE
+
 USE_CUDA = FALSE
 
-DIM = 2
+
 
 include ./Make.package
 
