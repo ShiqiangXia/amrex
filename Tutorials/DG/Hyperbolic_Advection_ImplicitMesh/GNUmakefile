@@ -4,7 +4,7 @@ AMREX_HOME ?= ../../../
 
 COMP = gnu
 DEBUG = TRUE
-USE_MPI = TRUE
+USE_MPI = FALSE	
 USE_CUDA = FALSE
 
 DIM = 2

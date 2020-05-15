@@ -3,11 +3,12 @@ AMREX_HOME ?= ../../../
 DEBUG	= FALSE
 DEBUG	= TRUE
 
-DIM	= 3
+DIM	= 2
 
 COMP    = gcc
+CXXSTD = c++14
 
-USE_MPI   = FALSE
+USE_MPI   = TRUE
 USE_OMP   = FALSE
 USE_CUDA  = FALSE
 USE_HIP   = FALSE
