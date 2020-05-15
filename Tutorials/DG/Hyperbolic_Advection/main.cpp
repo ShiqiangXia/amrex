@@ -104,11 +104,17 @@ struct inputs_struct
     mesh_struct mesh;
     dG_struct dG;
     int plot_int;
+    //SX ========
+    bool post_processing_by_filtering;
+    //SX ========
 
     public:
     inputs_struct()
     :
-    plot_int(-1)
+    plot_int(-1),
+    //SX ========
+    post_processing_by_filtering(false)
+    //SX ========
     {}
 };
 // --------------------------------------------------------------------
@@ -196,6 +202,11 @@ amrex::Print() << "#############################################################
 
         // POST-PROCESSING INFO ---------------------------------------
         pp.query("plot_int", inputs.plot_int);
+
+        //SX ========
+        pp.query("post_processing_by_filtering", inputs.post_processing_by_filtering);
+        //SX ========
+
         // ------------------------------------------------------------
         
     }
@@ -386,6 +397,21 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
 
     }
     // ----------------------------------------------------------------
+
+    //SX ========
+    // Post-prrocessing ==============================================
+    // Shiqiang Xia 05/15/2020
+    if (inputs.post_processing_by_filtering)
+    {
+        // post-process the dG solution by convolution filtering
+
+    }
+
+
+
+
+    // ================================================================
+    //SX ========
 
 amrex::Print() << "# END OF THE ANALYSIS                                                  " << std::endl;
     // ================================================================
