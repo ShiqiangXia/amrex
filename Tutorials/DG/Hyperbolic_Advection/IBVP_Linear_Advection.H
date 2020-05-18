@@ -94,7 +94,7 @@ public:
     void F_EXACT(const amrex::Real & t, const amrex::Real * x,
                  amrex::Real * U) const
     {
-        U[0] = this->F_U0(0, x);
+        U[0] = this->F_U0(0, x); //SX ???? U0(0,x-t)??
     }
     // ================================================================
 

@@ -401,9 +401,11 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
     //SX ========
     // Post-prrocessing ==============================================
     // Shiqiang Xia 05/15/2020
+
     if (inputs.post_processing_by_filtering)
     {
         // post-process the dG solution by convolution filtering
+        
 
         // WRITE TO OUTPUT
 

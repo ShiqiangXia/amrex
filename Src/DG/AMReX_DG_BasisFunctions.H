@@ -19,6 +19,7 @@ AMREX_GPU_HOST_DEVICE
 void DG_BF_1d_Table_NxL(const int& N, const int& L,
                         const T* x, const Real& xlo, const Real& xhi,
                         T* BF)
+                        //SX:  N points in x , poly. order <= L, interval [xlo, xhi], BF[N*L] stores the table in a long vector
 {
     // LOCAL VARIABLES =====
     Real dx = (xhi-xlo);
@@ -27,6 +28,7 @@ void DG_BF_1d_Table_NxL(const int& N, const int& L,
     // =====================
 
     // LEGENDRE POLYNOMIALS ===========================================
+    // recursion formula
 #if (DG_BASIS_FUNCTIONS == DG_BASIS_FUNCTIONS_LEGENDRE_P)
     for (int n = 0; n < N; ++n) BF[n] = 1.0;
     if (L > 0) for (int n = 0; n < N; ++n) BF[n+N] = J*(x[n]-xm);
