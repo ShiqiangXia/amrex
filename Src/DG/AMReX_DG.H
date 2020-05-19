@@ -1095,6 +1095,23 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
     // ################################################################
 };
 // ####################################################################
+
+// SX
+// Post-process by convolution
+void Convolution_Postprocessing(const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                                const MatrixFactory<N_PHI, N_DOM> & MatFactory)
+{
+    // step 1: load and pre-compute necessary data for the kernel
+
+    // step 2: Convolve with the DG solution
+        // 1. go through all elements
+        // 2. for each element, find necessary neighbors
+        // 3. do the convolution
+
+    // step 3: project the post-processed solution 
+
+
+}
 // ####################################################################
 
 } // namespace DG
