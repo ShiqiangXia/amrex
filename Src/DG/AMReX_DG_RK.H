@@ -793,7 +793,7 @@ struct RungeKutta
                                 );
                             }
 
-                            // NUMERICAL FLUX FOR INTRAPHASE
+                            // NUMERICAL FLUX FOR INTRAPHASE  
                             IBVP.F_NF_BCS(t, x, un, Uh, AMREX_D_DECL(NF1, NF2, NF3));
 
                             // DG CONTRIBUTION

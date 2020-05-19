@@ -186,6 +186,7 @@ public:
 
     // DG-RELATED AUXILIARY FUNCTIONS: NUMERICAL FLUX =================
     // INTRAPHASE
+    // Lax–Friedrichs Flux
     AMREX_GPU_HOST_DEVICE
     void F_NF_ICS_LF(const amrex::Real & t, const amrex::Real * x, const amrex::Real * un,
                   const amrex::Real * U, const amrex::Real * nbr_U,
