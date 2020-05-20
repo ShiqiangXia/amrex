@@ -84,6 +84,10 @@ struct dG_struct
     int space_q, time_q;
     std::string use_slope_limiter;
     bool use_slope_limiter_flag;
+    //SX ========
+    std::string post_processing_by_convolution;
+    bool post_processing_by_convolution_flag;
+    //SX ========
 
     public:
     dG_struct()
@@ -91,7 +95,10 @@ struct dG_struct
     phi_space_p(-1),
     space_p(-1),
     time_p(-1),
-    use_slope_limiter_flag(false)
+    use_slope_limiter_flag(false),
+     //SX ========
+    post_processing_by_convolution_flag(false)
+    //SX ========
     {}
 };
 // --------------------------------------------------------------------
@@ -104,17 +111,11 @@ struct inputs_struct
     mesh_struct mesh;
     dG_struct dG;
     int plot_int;
-    //SX ========
-    bool post_processing_by_filtering;
-    //SX ========
-
+    
     public:
     inputs_struct()
     :
-    plot_int(-1),
-    //SX ========
-    post_processing_by_filtering(false)
-    //SX ========
+    plot_int(-1)
     {}
 };
 // --------------------------------------------------------------------
@@ -204,7 +205,9 @@ amrex::Print() << "#############################################################
         pp.query("plot_int", inputs.plot_int);
 
         //SX ========
-        pp.query("post_processing_by_filtering", inputs.post_processing_by_filtering);
+        pp.query("post_processing_by_convolution", inputs.dG.post_processing_by_convolution);
+        if (inputs.dG.post_processing_by_convolution == "true") inputs.dG.post_processing_by_convolution_flag = true;
+        else inputs.dG.post_processing_by_convolution_flag = false;
         //SX ========
 
         // ------------------------------------------------------------
@@ -402,10 +405,12 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
     // Post-prrocessing ==============================================
     // Shiqiang Xia 05/15/2020
 
-    if (inputs.post_processing_by_filtering)
+    if (inputs.dG.post_processing_by_convolution_flag)
     {
         // post-process the dG solution by convolution filtering
         
+        dG.Convolution_Postprocessing(iGeom,MatFactory);
+
 
         // WRITE TO OUTPUT
 
