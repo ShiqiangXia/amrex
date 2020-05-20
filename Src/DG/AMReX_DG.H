@@ -7,6 +7,7 @@
 #include <AMReX_DG_MatrixFactory.H>
 #include <AMReX_DG_ImplicitGeometry.H>
 #include <AMReX_DG_RK.H>
+#include <AMReX_DG_PostProcessByConvolution.H>
 
 namespace amrex
 {
@@ -1105,17 +1106,26 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         const int sp = MatFactory.space_p;
         const int sNp = MatFactory.space_Np;
 
+    
+
         // 1D Quadrature points on the reference unithyperrectangle
-
         const int sq = iGeom.uHyperrect.q ;  
-        Gpu::ManagedVector<Real> quad_points = iGeom.uHyperrect.dom_XI1q;  // sq+1 points
 
-        
-        const int deg_bspline = sp+1;
+        UnitHyperrectangle<1> uHyperrect(sq,sq) ; 
+        Gpu::ManagedVector<Real> quad_points = uHyperrect.dom_XI1q ;  // sq+1 points
+        Gpu::ManagedVector<Real> quad_weights = uHyperrect.dom_Wq ;  // sq+1 weights
 
-        
+        Gpu::ManagedVector<Real> points = quad_points;
 
+       
+
+
+
+        Gpu::ManagedVector<Real> Conv_matrix ;
         
+        get_convolution_matrix(Conv_matrix,points,sp,quad_points,quad_weights);
+       
+
 
         /*
         Print() << "quad q : " << sq << std::endl;
