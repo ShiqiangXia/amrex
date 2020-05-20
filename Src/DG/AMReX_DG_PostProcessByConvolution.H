@@ -1,0 +1,250 @@
+
+#include <AMReX_REAL.H>
+
+namespace amrex
+{
+namespace DG
+{
+    const Real cr_1[3] = {-1.0/12,7.0/6,-1.0/12};
+    const Real cr_2[5] = {37.0/1920, -(97.0/480), 437.0/320, -(97.0/480), 37.0/1920};
+    const Real cr_3[7] = {-(41.0/7560), 311.0/5040, -(919.0/2520), 12223.0/7560, -(919.0/2520), 311.0/5040, -(41.0/7560)};
+    const Real cr_4[9] = {153617.0/92897280, -(35411.0/1658880), 3153959.0/23224320,-(6803459.0/11612160), 18017975.0/9289728, -(6803459.0/11612160), 3153959.0/23224320, -(35411.0/1658880), 153617.0/92897280};
+    const Real cr_5[11] = {-(4201.0/7983360), 30773.0/3991680, -(20813.0/380160), 2825.0/11088, -(1179649.0/1330560), 1569217.0/665280, -(1179649.0/1330560), 2825.0/11088, -(20813.0/380160), 30773.0/3991680, -(4201.0/7983360)};
+
+    void Bspline(Real x, int k, Real & out)
+    {
+        if (k==1)
+        {
+            if (x<=0.5 && x>= -0.5) out = 1.0;
+            else out = 0.0;
+        }
+        else
+        {
+            Real temp1, temp2, s1, s2;
+            Bspline(x+0.5, k-1, temp1);
+            Bspline(x-0.5, k-1, temp2);
+            s1 = k/2.0 + x;
+            s2 = k/2.0 - x;
+            out = 1.0/(k-1) * ( s1 * temp1 + s2 * temp2 );
+        }
+        
+    }
+    void Bspline_breaks(Real * bp_breaks, int & break_flag, int deg_Bspine, Real center_point)
+    {
+        const Real sl = center_point - 0.5;
+        const Real sr = center_point + 0.5;
+        Real knots[deg_Bspine+1];
+        for(int ii = 0; ii<deg_Bspine+1; ++ii)
+        {
+            knots[ii] = (-deg_Bspine + 2.0 * ii) * 0.5;
+
+        }
+        //##########################
+
+        if (sl>=knots[deg_Bspine] || sr<= knots[0])
+        {
+            break_flag = 1;
+            bp_breaks[0] = 0;
+            bp_breaks[1] = 0;
+            bp_breaks[2] = 0;
+
+        }
+        else if (sl< knots[0] && sr>knots[0] )
+        {
+            break_flag = 2;
+            bp_breaks[0] = knots[0];
+            bp_breaks[1] = sr;
+            bp_breaks[2] = 0;
+
+        }
+        else if (sl<knots[deg_Bspine] && sr>knots[deg_Bspine])
+        {
+            break_flag = 2;
+            bp_breaks[0] = sl;
+            bp_breaks[1] = knots[deg_Bspine];
+            bp_breaks[2] = 0;
+
+        }
+        else
+        {
+            int position = 0;
+            for (int ii =0; ii < deg_Bspine + 1; ++ii)
+            {
+                if (knots[ii] >= sl)
+                {
+                    position = ii;
+                    break;
+
+                }
+
+            }
+            if (knots[position] == sl)
+            {
+                break_flag = 4;
+                bp_breaks[0] = sl;
+                bp_breaks[1] = sr;
+                bp_breaks[2] = 0;
+            }
+            else
+            {
+                break_flag = 3;
+                bp_breaks[0] = sl;
+                bp_breaks[1] = knots[position];
+                bp_breaks[2] = sr;
+            }
+            
+        }
+        
+    }
+    void Bspine_break_quadrature(Real * rlt, int deg_Bspine, Real center_point,Real xleft,Real xright, Gpu::ManagedVector<Real>  quad_points, Gpu::ManagedVector<Real>  quad_weights, int Np)
+    {
+        Real half_h =  ( xright-xleft ) *0.5;
+        Real mid = (xright + xleft ) *0.5;
+        int Nq = quad_points.size();
+        Real spline_vec[Nq] ;
+        Real spline_pts[Nq];
+        Real basis_pts[Nq];
+
+
+
+        for (int ii = 0; ii < Nq; ++ii)
+        {
+            Real out;
+            spline_pts[ii] = half_h * quad_points[ii] + mid;
+            basis_pts[ii] = ( center_point - spline_pts[ii] ) * 2.0 ;
+            Bspline(spline_pts[ii], deg_Bspine, out);
+            spline_vec[ii] = out ;
+        }
+
+
+
+    }
+    void Bspline_integral(Real * rlt, int  Np, Real center_point, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {
+        const int deg_Bspine = Np;
+        Real bp_breaks[3];
+        int  break_flag = 0;
+        
+
+        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point);
+
+        if (break_flag == 1)
+        {
+            for(int nn = 0; nn < Np; ++nn)
+            {
+                rlt[nn] = 0.0;
+            }
+
+        }
+        else if (break_flag == 2 || break_flag == 4)
+        {
+            Bspine_break_quadrature(rlt, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights, Np);
+
+        }
+        else
+        {
+            Real out1[Np];
+            Real out2[Np];
+            Bspine_break_quadrature(out1, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights,Np);
+            Bspine_break_quadrature(out2, deg_Bspine,center_point,bp_breaks[1],bp_breaks[2], quad_points,quad_weights,Np);
+
+            for(int nn = 0; nn < Np; ++nn)
+            {
+                rlt[nn]= out1[nn] + out2[nn];
+            }
+        }
+        
+
+    }
+    void compute_convolution_matrix(Gpu::ManagedVector<Real> & AA, int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights )
+    {
+        const int Npoints = points.size();
+        const int Np = sp+1;
+        const int Nr = 2*sp+1;
+        const int NJ = 4*sp+1;
+
+        AA.resize(Npoints*Np*Nr*NJ);
+        Real center_point; 
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int jj = 0; jj <  NJ; ++jj)
+            {
+                for (int rr = 0; rr < Nr; ++rr )
+                {
+                    center_point = points[nn]*0.5 - (rr-sp) - (jj - 2*sp);
+                    Real rlt[Np];
+                    Bspline_integral(rlt, Np, center_point, quad_points, quad_weights);
+
+                    for (int mm = 0; mm < Np; ++mm)
+                    {
+                        AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt[mm];
+
+                    }
+                }
+            }
+        }
+
+
+    }
+
+    void get_convolution_matrix(Gpu::ManagedVector<Real> & matrix, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {   
+        const int Npoints = points.size();
+        const int Np = sp+1;
+        const int Nr = 2*sp+1;
+        const int NJ = 4*sp+1;
+
+        matrix.resize(Npoints*Np*NJ);
+        
+        //step 1. load cr
+
+        const Real * cr ;
+
+        if (sp == 1) cr = cr_1 ;
+        else if (sp == 2) cr = cr_2;
+        else if (sp == 3) cr = cr_3;
+        else if (sp == 4) cr = cr_4;
+        else if (sp == 5) cr =cr_5;
+        else
+        {
+            Print()<<"Order "<<sp<<" is not implemented"<< std::endl;
+        }
+
+        // setp 2. compute A_{n,m,r,j}
+        
+        
+
+        Gpu::ManagedVector<Real> AA;
+
+        compute_convolution_matrix(AA, sp, points, quad_points, quad_weights);
+
+
+        // step 3. sum A_{n,m,r,j} * cr/2 over r
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int mm = 0; mm < Np; ++mm)
+            {
+                for (int jj = 0; jj <  NJ; ++jj)
+                {
+                    matrix[jj+mm*NJ + nn*NJ*Np] = 0.0;
+
+                    for (int rr = 0; rr < Nr; ++rr )
+                    {
+                       matrix[ jj + mm*NJ + nn*NJ*Np ] += 0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+
+                    }
+                }
+            }
+        }
+
+
+
+        
+        
+    }
+
+}
+
+}
