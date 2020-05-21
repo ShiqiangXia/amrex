@@ -1,5 +1,6 @@
 
 #include <AMReX_REAL.H>
+#include <AMReX_DG_BasisFunctions.H>
 
 namespace amrex
 {
@@ -114,6 +115,23 @@ namespace DG
             basis_pts[ii] = ( center_point - spline_pts[ii] ) * 2.0 ;
             Bspline(spline_pts[ii], deg_Bspine, out);
             spline_vec[ii] = out ;
+        }
+
+        // evalue basis (up to Np) at basis_pts
+        Real  BF[Nq*Np] ;
+        DG_BF_1d_Table_NxL(Nq, Np-1, basis_pts, -1.0, 1.0, BF);
+
+        // perform numerical quadratue (Bspline, basis_function)
+
+        for (int nn = 0; nn < Np; ++nn)
+        {
+            rlt[nn] = 0;
+            for (int jj = 0; jj < Nq; ++jj)
+            {
+                rlt[nn] += quad_weights[jj] * spline_vec[jj] * BF[jj+nn*Nq];
+            }
+            rlt[nn] *=0.5*half_h;
+
         }
 
 
