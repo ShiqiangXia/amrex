@@ -14,6 +14,9 @@ namespace DG
 
     void Bspline(Real x, int k, Real & out)
     {
+        // Recusive define Bspline
+        // Bspline_{k+1}(x) = 1/k[ ((k+1)/2+x) * Bspline_{k}(x+1/2)+ ((k+1)/2-x) * Bspline_{k}(x-1/2) ]
+
         if (k==1)
         {
             if (x<=0.5 && x>= -0.5) out = 1.0;
@@ -32,9 +35,18 @@ namespace DG
     }
     void Bspline_breaks(Real * bp_breaks, int & break_flag, int deg_Bspine, Real center_point)
     {
+        // figure out the actual integral domain
+        // based on the support of the Bspline and the center_point
+        // Output:
+        // break_flag: type of integral we will deal with
+        // bp_breaks: store the actual x_low and x_high of the integral
+
+        // lower and upper bound of the integral domain
         const Real sl = center_point - 0.5;
         const Real sr = center_point + 0.5;
+
         Real knots[deg_Bspine+1];
+        // knots of the Bspline
         for(int ii = 0; ii<deg_Bspine+1; ++ii)
         {
             knots[ii] = (-deg_Bspine + 2.0 * ii) * 0.5;
@@ -42,6 +54,7 @@ namespace DG
         }
         //##########################
 
+        // Find the acutal integral domain: 5 cases
         if (sl>=knots[deg_Bspine] || sr<= knots[0])
         {
             break_flag = 1;
@@ -69,7 +82,7 @@ namespace DG
         else
         {
             int position = 0;
-            for (int ii =0; ii < deg_Bspine + 1; ++ii)
+            for (int ii =0; ii < (deg_Bspine + 1); ++ii)
             {
                 if (knots[ii] >= sl)
                 {
@@ -99,6 +112,10 @@ namespace DG
     }
     void Bspine_break_quadrature(Real * rlt, int deg_Bspine, Real center_point,Real xleft,Real xright, Gpu::ManagedVector<Real>  quad_points, Gpu::ManagedVector<Real>  quad_weights, int Np)
     {
+        // Actual integral of Bspline and DG basis function on [xleft, xright]
+        //Output:
+        // rlt: array of Np x 1, contains integral (Bspline, basis_i) for 1<=i<=Np
+
         Real half_h =  ( xright-xleft ) *0.5;
         Real mid = (xright + xleft ) *0.5;
         int Nq = quad_points.size();
@@ -121,7 +138,7 @@ namespace DG
         Real  BF[Nq*Np] ;
         DG_BF_1d_Table_NxL(Nq, Np-1, basis_pts, -1.0, 1.0, BF);
 
-        // perform numerical quadratue (Bspline, basis_function)
+        // perform numerical quadratue int_{xleft, xright}(Bspline, basis_function)
 
         for (int nn = 0; nn < Np; ++nn)
         {
@@ -130,7 +147,7 @@ namespace DG
             {
                 rlt[nn] += quad_weights[jj] * spline_vec[jj] * BF[jj+nn*Nq];
             }
-            rlt[nn] *=0.5*half_h;
+            rlt[nn] *=2.0*half_h;
 
         }
 
@@ -139,11 +156,15 @@ namespace DG
     }
     void Bspline_integral(Real * rlt, int  Np, Real center_point, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {
+        // Compute the integral (Bspline, DG_basis_function) for each basis function
+        //Output
+        // rlt: array of Np x 1, integral for each basis function
+
         const int deg_Bspine = Np;
         Real bp_breaks[3];
         int  break_flag = 0;
         
-
+        // Figure out the actual integral domain and type
         Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point);
 
         if (break_flag == 1)
@@ -156,11 +177,15 @@ namespace DG
         }
         else if (break_flag == 2 || break_flag == 4)
         {
+            // in this case there is no break
+            // just have one integral
             Bspine_break_quadrature(rlt, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights, Np);
 
         }
         else
         {
+            // in this case there is a break
+            // need to add two integrals together
             Real out1[Np];
             Real out2[Np];
             Bspine_break_quadrature(out1, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights,Np);
@@ -176,6 +201,9 @@ namespace DG
     }
     void compute_convolution_matrix(Gpu::ManagedVector<Real> & AA, int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights )
     {
+        // compute the convolution matrix based on the DG method and points of interests
+        //Output: AA
+
         const int Npoints = points.size();
         const int Np = sp+1;
         const int Nr = 2*sp+1;
@@ -193,6 +221,19 @@ namespace DG
                     center_point = points[nn]*0.5 - (rr-sp) - (jj - 2*sp);
                     Real rlt[Np];
                     Bspline_integral(rlt, Np, center_point, quad_points, quad_weights);
+                    
+                    /*
+                    if(nn==0 && rr==0 &&jj==5)
+                    {
+                        Print()<<"point  "<<points[nn]<<std::endl;
+                        Print()<<"center_point  "<<center_point<<std::endl;
+                        for (int mm = 0; mm < Np; ++mm)
+                        {
+                            Print()<<"rlt "<<rlt[mm]<<std::endl;
+                        }
+
+                    }
+                    */
 
                     for (int mm = 0; mm < Np; ++mm)
                     {
@@ -203,11 +244,22 @@ namespace DG
             }
         }
 
+        /*
+
+        Print()<<"AA:  "<<AA[0]<<std::endl;
+        Print()<<"AA:  "<<AA[1]<<std::endl;
+        Print()<<"AA:  "<<AA[4]<<std::endl;
+        Print()<<"AA:  "<<AA[5]<<std::endl;
+        */
+
 
     }
 
     void get_convolution_matrix(Gpu::ManagedVector<Real> & matrix, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {   
+        // Precompute the convolution matrix needed for post-processing
+
+        // basic info 
         const int Npoints = points.size();
         const int Np = sp+1;
         const int Nr = 2*sp+1;
@@ -231,12 +283,27 @@ namespace DG
 
         // setp 2. compute A_{n,m,r,j}
         
-        
+        /*
+
+        for (int ii=0; ii < Nr; ++ii)
+        {
+            Print()<<"cr:  "<<cr[ii]<<std::endl;
+        }
+
+        Print()<<"Npoints "<<Npoints<<std::endl;
+        Print()<<"Np "<<Np<<std::endl;
+        Print()<<"Nr "<<Nr<<std::endl;
+        Print()<<"NJ "<<NJ<<std::endl;
+
+        for (int ii=0; ii < Npoints; ++ii)
+        {
+            Print()<<points[ii]<<"  "<<quad_points[ii]<< "  "<<quad_weights[ii]<<std::endl;
+        }
+        */
 
         Gpu::ManagedVector<Real> AA;
 
         compute_convolution_matrix(AA, sp, points, quad_points, quad_weights);
-
 
         // step 3. sum A_{n,m,r,j} * cr/2 over r
 
@@ -256,9 +323,6 @@ namespace DG
                 }
             }
         }
-
-
-
         
         
     }
