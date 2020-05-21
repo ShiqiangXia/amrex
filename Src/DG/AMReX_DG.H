@@ -1106,7 +1106,6 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         const int sp = MatFactory.space_p;
         const int sNp = MatFactory.space_Np;
 
-
         // 1D Quadrature points on the reference unithyperrectangle
         const int sq = iGeom.uHyperrect.q ;  
 
@@ -1149,7 +1148,21 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                 for (int npoint = 0 ; npoint < Npoints; ++npoint)
                 {
                     // do the convolution for the present cell
-                    // add the contribution to X_star(i,j,k,npoint);
+                    // add the contribution to X_star_fab(i,j,k,npoint);
+                    // X_star_fab(i,j,k,npoint) += u_{m1,m2,m3}^{j1,j2,j3} * matrix_1 * matrix_2 * matrix_3;
+                    Real mm_dir[AMREX_SPACEDIM];
+                    for(int mm = 0; mm < sNp; ++mm)
+                    {
+                        AMREX_D_TERM
+                        (
+                            mm_dir[0] = mm%(sp+1);,
+                            mm_dir[1] = ( (mm - mm_dir[0])/(sp+1) ) %( (sp+1);,
+                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sp+1) ) / ( (sp+1)*(sp+1) );
+                        )
+                   
+
+                    }
+                    
                 }
 
                 // set present cell to temp cell
