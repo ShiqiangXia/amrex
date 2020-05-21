@@ -1106,7 +1106,6 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         const int sp = MatFactory.space_p;
         const int sNp = MatFactory.space_Np;
 
-    
 
         // 1D Quadrature points on the reference unithyperrectangle
         const int sq = iGeom.uHyperrect.q ;  
@@ -1115,33 +1114,82 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         Gpu::ManagedVector<Real> quad_points = uHyperrect.dom_XI1q ;  // sq+1 points
         Gpu::ManagedVector<Real> quad_weights = uHyperrect.dom_Wq ;  // sq+1 weights
 
+        // points of interests
         Gpu::ManagedVector<Real> points = quad_points;
+        const int Npoints = points.size();
 
-       
-
-
-
+        // compute the convolution matrix
         Gpu::ManagedVector<Real> Conv_matrix ;
-        
         get_convolution_matrix(Conv_matrix,points,sp,quad_points,quad_weights);
        
-
-
-        /*
-        Print() << "quad q : " << sq << std::endl;
-
-        for (int i = 0; i<=sq; ++i)
-        {
-            Print() << "quad points: " << quad_points[i] << std::endl;
-
-        }
-        */
-
 
         // step 2: Convolve with the DG solution
             // 1. go through all elements
             // 2. for each element, find necessary neighbors
             // 3. do the convolution
+
+        // store data for the post-processed solution
+        MultiFab X_star;
+        X_star.define(iGeom.cc_ba, iGeom.dm, Npoints,this->dom_data_ngr );
+
+        for (MFIter mfi(error); mfi.isValid(); ++mfi)
+        {
+            Array4<Real const> const & X_fab = this->X_new.array(mfi);
+            Array4<Real      > const & X_star_fab = X_star.array(mfi);
+
+
+            ParallelFor(bx,N_U,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
+            {
+                int nbr_i, nbr_j, nbr_k, nbr_b;
+                int temp_i, temp_j, temp_k;
+                const int one_side_support = 2*sp;
+
+                // present cell
+                for (int npoint = 0 ; npoint < Npoints; ++npoint)
+                {
+                    // do the convolution for the present cell
+                    // add the contribution to X_star(i,j,k,npoint);
+                }
+
+                // set present cell to temp cell
+                temp_i = i;
+                temp_j = j;
+                temp_k = k;
+
+                // go through all directions for neighbor cells
+                for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
+                {
+                    // do the convoltuion for the neighbors
+                    
+                    for(int s_support = 0; s_support < one_side_support; ++s_support)
+                    {   // find neighbor in direction b for the temp cell
+                        NBR_CELL(temp_i, temp_j, temp_k, b, nbr_i, nbr_j, nbr_k, nbr_b);
+
+                        // check if cell index is out of range.
+                        // if yes, use periodic condition.
+
+                        // do the convoltuion for the current neighbor
+                        for (int npoint = 0 ; npoint < Npoints; ++npoint)
+                        {
+                            // do the convolution for the cell
+                            // add the contribution to X_star(i,j,k,npoint);
+
+                        }
+
+                        // update temp cell,
+                        temp_i = nbr_i;
+                        temp_j = nbr_j;
+                        temp_k = nbr_k;
+                    }
+
+                }
+
+
+            });
+            Gpu::synchronize();
+
+        }
 
         // step 3: project the post-processed solution 
 
