@@ -1104,6 +1104,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
         // DG info
         const int sp = MatFactory.space_p;
+        const int sNp_1D = sp+1;
         const int sNp = MatFactory.space_Np;
 
         // 1D Quadrature points on the reference unithyperrectangle
@@ -1115,7 +1116,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
         // points of interests
         Gpu::ManagedVector<Real> points = quad_points;
-        const int Npoints = points.size();
+        
 
         // compute the convolution matrix
         Gpu::ManagedVector<Real> Conv_matrix ;
@@ -1129,22 +1130,124 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
         // store data for the post-processed solution
         MultiFab X_star;
+        MultiFab X_DG_temp;
         const int one_side_support = 2*sp;
-        const int Nj = 4*sp+1;
-        X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 2*sp ); // Npoints x N_u components; creat 2k ghoast cells
+        const int Npoints_1D = points.size();
+        const int Nj_1D = 4*sp+1 ;
+#if (AMREX_SPACEDIM == 1)
+        const int Npoints = Npoints_1D;
+        const int Nj = Nj_1D;
+#endif
+#if (AMREX_SPACEDIM == 2)
+        const int Npoints = Npoints_1D * Npoints_1D;
+        const int Nj = (Nj_1D)*(Nj_1D);
+#endif
+#if (AMREX_SPACEDIM == 3)
+        const int Npoints = Npoints_1D * Npoints_1D * Npoints_1D;
+        const int Nj = (Nj_1D)*(Nj_1D)*(Nj_1D);
+#endif
 
-        for (MFIter mfi(error); mfi.isValid(); ++mfi)
+        // Multifab to store post-processed data
+        X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
+
+        X_DG_temp.define(iGeom.cc_ba,iGeom.dm,sNp*N_U,one_side_support); //MultiFab with 2k ghoast cells
+
+        // copy from the DG solution
+        MultiFab::Copy(X_DG_temp,this->X_new,0,0,sNp*N_U,0);
+        X_DG_temp.FillBoundary(iGeom.geom.periodicity());
+
+        for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
         {
-            Array4<Real const> const & X_fab = this->X_new.array(mfi);
+            const Box & bx = mfi.validbox();
+            Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
+            // Array4<Real const> const & X_fab_new = this->X_new.array(mfi);
             Array4<Real      > const & X_star_fab = X_star.array(mfi);
 
+           
 
+
+            
             ParallelFor(bx,N_U,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
             {
                 int nbr_i, nbr_j, nbr_k, nbr_b;
-                int temp_i, temp_j, temp_k;
+                int temp_i=0;
+                int temp_j=0;
+                int temp_k=0;
                 
+                AMREX_D_TERM
+                (
+                    temp_i = i - one_side_support;,
+                    temp_j = j - one_side_support;,
+                    temp_k = k - one_side_support;
+                )
+
+                // Loop all neighbors of cell(i,j,k) with distance less than one_side_support
+                // do the convolution
+
+                // loop all points
+                
+                for (int point_iter=0; point_iter < Npoints; ++point_iter)
+                {
+            
+                    X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
+
+                    // loop all neighbors
+                    for(int jj=0; jj < Nj; ++jj)
+                    {
+                        
+                        int jj_dir[AMREX_SPACEDIM];
+                        
+                        AMREX_D_TERM
+                        (
+                            jj_dir[0] = jj%(Nj_1D);,
+                            jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;,
+                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ((Nj_1D)*(Nj_1D));
+                            
+                        )
+                        
+
+                        AMREX_D_TERM
+                        (   
+                            temp_i += jj_dir[0];,
+                            temp_j += jj_dir[1];,
+                            temp_k += jj_dir[2];
+                        )
+
+
+                        
+                        // loop all basis
+                        for(int mm = 0; mm < sNp; ++mm)
+                        {
+                            int mm_dir[AMREX_SPACEDIM];
+                            AMREX_D_TERM
+                        (
+                            mm_dir[0] = mm%(sNp_1D);,
+                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);,
+                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                        )
+                            Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                            
+                            for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
+                            {
+                                temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + point_iter*Nj_1D*(sNp_1D)];
+
+                            }
+                            X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+
+
+                        }
+                        
+                        
+
+                    }  
+
+                }
+                
+
+                //Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",ru: "<<ru<<", "<<"DG: "<<X_fab_new(i,j,k,ru)<<std::endl;
+                //Print()<<"index temp_i: "<<temp_i<<",j: "<<temp_j<<",k: "<<temp_k<<",ru: "<<0<<", "<<"DG: "<<X_fab(temp_i,temp_j,temp_k,0)<<std::endl;
+                /*
                 // present cell
                 for (int npoint = 0 ; npoint < Npoints; ++npoint)
                 {
@@ -1192,8 +1295,6 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                     {   // find neighbor in direction b for the temp cell
                         NBR_CELL(temp_i, temp_j, temp_k, b, nbr_i, nbr_j, nbr_k, nbr_b);
 
-                       
-
                         // do the convoltuion for the current neighbor
                         for (int npoint = 0 ; npoint < Npoints; ++npoint)
                         {
@@ -1234,8 +1335,11 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                 }
 
 
+            */
+
             });
             Gpu::synchronize();
+            
 
         }
 
