@@ -33,6 +33,7 @@ private:
 
     // Solution
     MultiFab X_old, X_new;
+    MultiFab X_star_DG;
     // ################################################################
 
 public:
@@ -1108,7 +1109,6 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         const int sNp = MatFactory.space_Np;
 
         const int sp_star = 2*sp + 1;
-        const int sNp_star = sp_star+1;
 
         // 1D Quadrature points on the reference unithyperrectangle
         // make sure sq >= sp_star
@@ -1234,30 +1234,20 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         }
 
         // step 3: project the post-processed solution 
-        
-        const int Np = uHyperrect.Np;
-        const int dom_Nq = uHyperrect.dom_Nq;
+        UnitHyperrectangle<AMREX_SPACEDIM> dHyperreect(sp_star,sq) ; 
+        const int Np = dHyperreect.Np;
+        const int dom_Nq = dHyperreect.dom_Nq;
+        Real const * dom_Wq_ptr = dHyperreect.dom_Wq.data();
+        Real const * dom_BF_ptr = dHyperreect.dom_BF.data(); 
+        Real const * iMM_ptr = dHyperreect.iMM.data();
+        // MultiFab X_star_DG;
+       this->X_star_DG.define(iGeom.cc_ba, iGeom.dm, Np * N_U, 0 );
 
-        AMREX_D_TERM
-        (
-            Real const * dom_XI1q_ptr = uHyperrect.dom_XI1q.data();,
-            Real const * dom_XI2q_ptr = uHyperrect.dom_XI2q.data();,
-            Real const * dom_XI3q_ptr = uHyperrect.dom_XI3q.data();
-        )
-        Real const * dom_Wq_ptr = uHyperrect.dom_Wq.data();
-        Real const * dom_BF_ptr = uHyperrect.dom_BF.data(); 
-        
-        Real const * iMM_ptr = uHyperrect.iMM.data();
-
-        MultiFab X_star_DG;
-        X_star_DG.define(iGeom.cc_ba, iGeom.dm, sNp_star * N_U, 0 );
-
-        
         for (MFIter mfi(X_star_DG); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
             Array4<Real const> const & X_star_fab = X_star.array(mfi);
-            Array4<Real      > const & X_star_DG_fab = X_star_DG.array(mfi);
+            Array4<Real      > const & X_star_DG_fab = this->X_star_DG.array(mfi);
 
             // loop over cells
             // do the projection
@@ -1273,11 +1263,12 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                     for (int rs = 0; rs < Np; ++rs)
                     {
                         integrand = 0.0;
+                        //inverse mass matrix times basis_function(quadrature point)
+
                         for (int cs = 0; cs < Np; ++cs) integrand += iMM_ptr[rs+cs*Np]*dom_BF_ptr[q+cs*dom_Nq];
+
                         integrand *= X_star_fab(i,j,k,q+ru*dom_Nq);
-
                         // Sum integral contribution
-
                         X_star_DG_fab(i,j,k,rs+ru*Np) += integrand*dom_Wq_ptr[q];
                     }
 
@@ -1291,16 +1282,168 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         }
 
 
+        // step 4: evalue error;
+        
+
+
+
+
+
+
+
 
 
 
 
     }
 
-};
+
 // ####################################################################
 
+// ERROR EVALUATION ###############################################
+    template<typename IBVP_CLASS>
+    Real PostProcessedEvalErrorNorm(const Real & t,
+                       const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                       const MatrixFactory<N_PHI, N_DOM> & MatFactory,
+                       const IBVP_CLASS & IBVP)
+    {
+        // PROFILING --------------------------------------------------
+        BL_PROFILE("DG::EvalErrorNorm(const Real &, const ImplicitGeometry<N_PHI, N_DOM> &, ....)");
+        // ------------------------------------------------------------
 
+        // PARAMETERS =================================================
+        // GRID
+        const GpuArray<Real, AMREX_SPACEDIM> dx = iGeom._dx;
+        const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
+        const GpuArray<Real, AMREX_SPACEDIM> J = iGeom._J;
+        const GpuArray<Real, AMREX_SPACEDIM> iJ = iGeom._iJ;
+        const Real aJ = iGeom._aJ;
+
+        // IMPLICIT MESH
+#ifdef AMREX_USE_CUDA
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_device_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_device_mem.data();
+#else
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_host_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_host_mem.data();
+#endif
+
+        // DG
+        const int sp = MatFactory.space_p;
+        // ============================================================
+
+        // VARIABLES ==================================================
+        MultiFab error(iGeom.cc_ba, iGeom.dm, 2, 0);
+        Real err;
+        // ============================================================
+
+        // EVAL THE ERROR =============================================
+        for (MFIter mfi(error); mfi.isValid(); ++mfi)
+        {
+            const Box & bx = mfi.validbox();
+            
+            Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
+            Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
+            Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
+            Array4<long const> const & space_Dom_BF_pos_fab = MatFactory.space_Dom_BF_pos.array(mfi);
+            Array4<Real const> const & X_fab = this->X_star_DG.array(mfi);
+            Array4<Real> const & err_fab = error.array(mfi);
+
+            ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // INITIALIZATION
+                err_fab(i,j,k,0) = 0.0;
+                err_fab(i,j,k,1) = 0.0;
+
+                // LOCAL PARAMETERS
+                const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
+
+                // LOCAL VARIABLES
+                int dom, etype;
+                int BF_i, BF_j, BF_k;
+                Real x[AMREX_SPACEDIM], w;
+                Real Uh[N_U], Ue[N_U];
+                Real integrand;
+
+                // QUADRATURE INFO
+                int dom_Nq;
+                long eDomQuad_pos, qi_pos, space_BF_pos;
+                const Real * xptr;
+                const Real * BF_ptr;
+
+                // Data structures used to compute the basis functions
+                // and the unknown fields
+                DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
+
+                // CYCLE OVER THE UNKNOWN FIELDS
+                for (int ru = 0; ru < N_U; ++ru)
+                {
+                    dom = IBVP.F_U2DOM(ru);
+                    etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+
+                    // Get the support of the basis functions
+                    BF_CELL(i, j, k, etype, BF_i, BF_j, BF_k);
+
+                    // Quadrature info
+                    dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+
+                    // Basis functions info
+                    space_BF_pos = space_Dom_BF_pos_fab(i,j,k,DG_DOM_BF_INFO_N_COMP_PER_DOM*dom);
+                    BF_ptr = &space_Dom_BF_mem_ptr[space_BF_pos];
+                    sol.set_BF_ptrs(BF_ptr);
+
+                    // COMPUTE THE INTEGRALS
+                    for (int qi = 0; qi < dom_Nq; ++qi)
+                    {
+                        // QUADRATURE POINT AND WEIGHT
+                        qi_pos = (AMREX_SPACEDIM+1)*qi;
+                        AMREX_D_TERM
+                        (
+                            x[0] = xptr[qi_pos+0]; x[0] = J[0]*x[0]+cell_m[0];,
+                            x[1] = xptr[qi_pos+1]; x[1] = J[1]*x[1]+cell_m[1];,
+                            x[2] = xptr[qi_pos+2]; x[2] = J[2]*x[2]+cell_m[2];
+                        )
+                        w = xptr[qi_pos+AMREX_SPACEDIM]; w = w*aJ;
+                        
+                        // SOLUTION
+                        sol._eval_BF_only_table_(qi);
+                        for (int cu = 0; cu < N_U; ++cu)
+                        {
+                            sol.set_fab_ptrs(BF_i, BF_j, BF_k, cu);
+                            
+                            Uh[cu] = sol._eval_unsafe_();
+                        }
+                        
+                        // EXACT SOLUTION
+                        IBVP.F_EXACT(t, x, Ue);
+
+                        integrand = std::abs(Ue[ru]);
+                        err_fab(i,j,k,0) += integrand*w;
+                        
+                        Ue[ru] -= Uh[ru];
+                        integrand = std::abs(Ue[ru]);
+                        err_fab(i,j,k,1) += integrand*w;
+                    }
+                }
+            });
+            Gpu::synchronize();
+        }
+        // ============================================================
+
+        // SUM =============================
+Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
+        err = (error.sum(1))/(error.sum(0));
+        // =================================
+
+        return err;
+    }
+    // ################################################################
+
+
+};
 // ####################################################################
 
 } // namespace DG

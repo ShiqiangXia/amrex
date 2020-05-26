@@ -49,10 +49,10 @@
 #endif
 
 // DG SPACE APPROXIMATION ORDER: SOLUTION
-#define DG_SOL_MAX_TIME_p 4
+#define DG_SOL_MAX_TIME_p 5
 #define DG_SOL_MAX_TIME_Np (1+DG_SOL_MAX_TIME_p)
 
-#define DG_SOL_MAX_SPACE_p 4
+#define DG_SOL_MAX_SPACE_p 5
 #if (AMREX_SPACEDIM == 1)
 #define DG_SOL_MAX_SPACE_Np (1+DG_SOL_MAX_SPACE_p)
 #endif

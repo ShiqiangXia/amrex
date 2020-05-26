@@ -194,7 +194,8 @@ amrex::Print() << "#############################################################
         pp_dG.get("space_p", inputs.dG.space_p);
         pp_dG.get("time_p", inputs.dG.time_p);
 
-        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+2);
+        // choose quadrature basedn on DG polynomial k
+        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, 2*inputs.dG.space_p+1);
 
         pp_dG.query("use_slope_limiter", inputs.dG.use_slope_limiter);
         if      (inputs.dG.use_slope_limiter == "true")  inputs.dG.use_slope_limiter_flag = true;
@@ -316,6 +317,9 @@ amrex::Print() << "#############################################################
     amrex::DG::MatrixFactory<N_PHI, N_DOM> MatFactory(indices_box, real_box, ba, dm, geom, inputs.dG.space_p, inputs.dG.time_p, inputs.dG.space_q, 0);
     amrex::DG::DG<N_PHI, N_DOM, N_U> dG("Hyperbolic", "Runge-Kutta");
     dG.InitData(iGeom, MatFactory);
+
+    //SX ========
+    amrex::DG::MatrixFactory<N_PHI, N_DOM> MatFactory2(indices_box, real_box, ba, dm, geom, 2*inputs.dG.space_p+1, inputs.dG.time_p, inputs.dG.space_q, 0);
     // ================================================================
 
     // DESTINATION FOLDER =============================================
@@ -337,6 +341,9 @@ amrex::Print() << "#############################################################
     iGeom.ProjectDistanceFunctions(LinAdv);
     iGeom.EvalImplicitMesh(LinAdv, false);
     MatFactory.Eval(iGeom);
+    
+    MatFactory2.Eval(iGeom);
+
     dG.SetICs(iGeom, MatFactory, LinAdv);
 
     // WRITE TO OUTPUT
@@ -412,8 +419,14 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
     if (inputs.dG.post_processing_by_convolution_flag)
     {
         // post-process the dG solution by convolution filtering
+        amrex::Print()<<"TEST~~~~~"<<std::endl;
         
         dG.Convolution_Postprocessing(iGeom,MatFactory);
+
+        amrex::Real err2;
+        amrex::Print()<<"TEST~~~~~"<<std::endl;
+
+        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory2, LinAdv);
 
 
         // WRITE TO OUTPUT
