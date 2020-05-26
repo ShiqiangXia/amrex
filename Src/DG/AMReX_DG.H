@@ -1156,72 +1156,54 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
         X_DG_temp.FillBoundary(iGeom.geom.periodicity());
 
+        // loop all boxes
         for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
             Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
             Array4<Real      > const & X_star_fab = X_star.array(mfi);
             
+            // loop all cells in a box
             ParallelFor(bx,N_U,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
             {
-                
-                // Loop all neighbors of cell(i,j,k) with distance less than one_side_support
-                // do the convolution
-
-                // loop all points
-                
+                // loop all points in a cell (i,j,k)
                 for (int point_iter=0; point_iter < Npoints; ++point_iter)
                 {
-                    int nn_dir[AMREX_SPACEDIM];
-                    AMREX_D_TERM
-                    (
-                        nn_dir[0] = point_iter%Npoints_1D;,
-                        nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;,
-                        nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
-
-                    )
-            
                     X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
 
-                    // loop all neighbors
+                    // loop all neighbors of a cell
                     for(int jj=0; jj < Nj; ++jj)
-                    {
-                        
-                        int jj_dir[AMREX_SPACEDIM];
-                        int temp_i=0;
-                        int temp_j=0;
-                        int temp_k=0;
-
-                        
-                        AMREX_D_TERM
-                        (
-                            jj_dir[0] = jj%(Nj_1D);,
-                            jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;,
-                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ( Nj_1D * Nj_1D);
-                            
-                        )
-                        
-
-                        AMREX_D_TERM
-                        (   
-                            temp_i = i - one_side_support + jj_dir[0];,
-                            temp_j = j - one_side_support + jj_dir[1];,
-                            temp_k = k - one_side_support + jj_dir[2];
-                        )
-
-
-                        
+                    { 
                         // loop all basis
                         for(int mm = 0; mm < sNp; ++mm)
                         {
+                            int nn_dir[AMREX_SPACEDIM];                      
+                            int jj_dir[AMREX_SPACEDIM];
                             int mm_dir[AMREX_SPACEDIM];
+                            int temp_i=0;
+                            int temp_j=0;
+                            int temp_k=0;
+
                             AMREX_D_TERM
                         (
-                            mm_dir[0] = mm%(sNp_1D);,
-                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);,
+                            nn_dir[0] = point_iter%Npoints_1D;
+                            jj_dir[0] = jj%(Nj_1D);
+                            mm_dir[0] = mm%(sNp_1D);
+                            temp_i = i - one_side_support + jj_dir[0];,
+
+                            nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;
+                            jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;
+                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);
+                            temp_j = j - one_side_support + jj_dir[1];,
+
+                            nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
+                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ( Nj_1D * Nj_1D);
                             mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                            temp_k = k - one_side_support + jj_dir[2];
+
                         )
+                        
                             Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
                             
                             for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
@@ -1231,11 +1213,8 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                             }
                             X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
 
-
                         }
                         
-                        
-
                     }  
 
                 }
