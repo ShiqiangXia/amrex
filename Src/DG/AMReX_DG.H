@@ -1153,35 +1153,19 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         X_DG_temp.define(iGeom.cc_ba,iGeom.dm,sNp*N_U,one_side_support); //MultiFab with 2k ghoast cells
 
         // copy from the DG solution
-        MultiFab::Copy(X_DG_temp,this->X_new,0,0,sNp*N_U,0);
+        MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
         X_DG_temp.FillBoundary(iGeom.geom.periodicity());
 
         for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
             Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
-            // Array4<Real const> const & X_fab_new = this->X_new.array(mfi);
             Array4<Real      > const & X_star_fab = X_star.array(mfi);
-
-           
-
-
             
             ParallelFor(bx,N_U,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
             {
-                int nbr_i, nbr_j, nbr_k, nbr_b;
-                int temp_i=0;
-                int temp_j=0;
-                int temp_k=0;
                 
-                AMREX_D_TERM
-                (
-                    temp_i = i - one_side_support;,
-                    temp_j = j - one_side_support;,
-                    temp_k = k - one_side_support;
-                )
-
                 // Loop all neighbors of cell(i,j,k) with distance less than one_side_support
                 // do the convolution
 
@@ -1189,6 +1173,14 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                 
                 for (int point_iter=0; point_iter < Npoints; ++point_iter)
                 {
+                    int nn_dir[AMREX_SPACEDIM];
+                    AMREX_D_TERM
+                    (
+                        nn_dir[0] = point_iter%Npoints_1D;,
+                        nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;,
+                        nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
+
+                    )
             
                     X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
 
@@ -1197,21 +1189,25 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                     {
                         
                         int jj_dir[AMREX_SPACEDIM];
+                        int temp_i=0;
+                        int temp_j=0;
+                        int temp_k=0;
+
                         
                         AMREX_D_TERM
                         (
                             jj_dir[0] = jj%(Nj_1D);,
                             jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;,
-                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ((Nj_1D)*(Nj_1D));
+                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ( Nj_1D * Nj_1D);
                             
                         )
                         
 
                         AMREX_D_TERM
                         (   
-                            temp_i += jj_dir[0];,
-                            temp_j += jj_dir[1];,
-                            temp_k += jj_dir[2];
+                            temp_i = i - one_side_support + jj_dir[0];,
+                            temp_j = j - one_side_support + jj_dir[1];,
+                            temp_k = k - one_side_support + jj_dir[2];
                         )
 
 
@@ -1230,7 +1226,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                             
                             for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
                             {
-                                temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + point_iter*Nj_1D*(sNp_1D)];
+                                temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + nn_dir[tt]*Nj_1D*(sNp_1D)];
 
                             }
                             X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
@@ -1247,95 +1243,6 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
                 //Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",ru: "<<ru<<", "<<"DG: "<<X_fab_new(i,j,k,ru)<<std::endl;
                 //Print()<<"index temp_i: "<<temp_i<<",j: "<<temp_j<<",k: "<<temp_k<<",ru: "<<0<<", "<<"DG: "<<X_fab(temp_i,temp_j,temp_k,0)<<std::endl;
-                /*
-                // present cell
-                for (int npoint = 0 ; npoint < Npoints; ++npoint)
-                {
-                    // do the convolution for the present cell
-                    // add the contribution to X_star_fab(i,j,k,npoint);
-                    // X_star_fab(i,j,k,npoint) += u_{m1,m2,m3}^{j1,j2,j3} * matrix_1 * matrix_2 * matrix_3;
-
-                    X_star_fab(i,j,k,npoint + ru*Npoints) = 0.0;
-
-                    Real mm_dir[AMREX_SPACEDIM];
-                    for(int mm = 0; mm < sNp; ++mm)
-                    {
-                        AMREX_D_TERM
-                        (
-                            mm_dir[0] = mm%(sp+1);,
-                            mm_dir[1] = ( (mm - mm_dir[0])/(sp+1) ) %( (sp+1);,
-                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sp+1) ) / ( (sp+1)*(sp+1) );
-                        )
-
-
-                        Real temp_var = X_fab(i,j,k,mm+ru*sNp);
-                        for(int tt = 0; tt<AMREX_SPACEDIM; ++tt)
-                        {
-                            temp_var * = Conv_matrix(2*sp+mm_dir[tt]*Nj+npoint*Nj*(sp+1));
-
-                        }
-
-                        X_star_fab(i,j,k,npoint + ru*Npoints) += temp_var;
-
-                    }
-                    
-                }
-
-                // set present cell to temp cell
-                temp_i = i;
-                temp_j = j;
-                temp_k = k;
-
-                // go through all directions for neighbor cells
-                for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
-                {
-                    // do the convoltuion for the neighbors
-                    
-                    for(int s_support = 0; s_support < one_side_support; ++s_support)
-                    {   // find neighbor in direction b for the temp cell
-                        NBR_CELL(temp_i, temp_j, temp_k, b, nbr_i, nbr_j, nbr_k, nbr_b);
-
-                        // do the convoltuion for the current neighbor
-                        for (int npoint = 0 ; npoint < Npoints; ++npoint)
-                        {
-                            // do the convolution for the cell
-                            // add the contribution to X_star(i,j,k,npoint);
-                            X_star_fab(i,j,k,npoint + ru*Npoints) = 0.0;
-                            Real mm_dir[AMREX_SPACEDIM];
-                            for(int mm = 0; mm < sNp; ++mm)
-                            {
-                                AMREX_D_TERM
-                                (
-                                    mm_dir[0] = mm%(sp+1);,
-                                    mm_dir[1] = ( (mm - mm_dir[0])/(sp+1) ) %( (sp+1);,
-                                    mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sp+1) ) / ( (sp+1)*(sp+1) );
-                                )
-
-                                Real temp_var = X_fab(nbr_i,nbr_j,nbr_k,mm+ru*sNp);
-                                for(int tt = 0; tt<AMREX_SPACEDIM; ++tt)
-                                {
-                                    // j depends on b 
-                                    // temp_var * = Conv_matrix(2*sp+mm_dir[tt]*Nj+npoint*Nj*(sp+1));
-
-                                }
-
-                                X_star_fab(i,j,k,npoint + ru*Npoints) += temp_var;
-
-                            }
-
-
-                        }
-
-                        // update temp cell,
-                        temp_i = nbr_i;
-                        temp_j = nbr_j;
-                        temp_k = nbr_k;
-                    }
-
-                }
-
-
-            */
 
             });
             Gpu::synchronize();

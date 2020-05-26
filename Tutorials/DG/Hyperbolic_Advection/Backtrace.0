@@ -12,11 +12,15 @@
 
  6: amrex::Array4<double const>::index_assert(int, int, int, int) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_Array4.H:185)
 
- 7: amrex::DG::DG<1, 1, 1>::Convolution_Postprocessing(amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_Array4.H:77)
+ 7: amrex::DG::DG<1, 1, 1>::Convolution_Postprocessing(amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&)::'lambda'(int, int, int, int)::operator()(int, int, int, int) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_Array4.H:77)
 
- 8: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:412)
+ 8: void amrex::ParallelFor<int, amrex::DG::DG<1, 1, 1>::Convolution_Postprocessing(amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&)::'lambda'(int, int, int, int), void>(amrex::Box const&, int, amrex::DG::DG<1, 1, 1>::Convolution_Postprocessing(amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&)::'lambda'(int, int, int, int)&&, unsigned long) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_GpuLaunchFunctsC.H:77)
 
- 9: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:458)
+ 9: amrex::DG::DG<1, 1, 1>::Convolution_Postprocessing(amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG.H:1165)
 
-10: start (in libdyld.dylib) + 1
+10: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:416)
+
+11: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:462)
+
+12: start (in libdyld.dylib) + 1
 
