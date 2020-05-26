@@ -1107,10 +1107,14 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         const int sNp_1D = sp+1;
         const int sNp = MatFactory.space_Np;
 
+        const int sp_star = 2*sp + 1;
+        const int sNp_star = sp_star+1;
+
         // 1D Quadrature points on the reference unithyperrectangle
+        // make sure sq >= sp_star
         const int sq = iGeom.uHyperrect.q ;  
 
-        UnitHyperrectangle<1> uHyperrect(sq,sq) ; 
+        UnitHyperrectangle<1> uHyperrect(sp_star,sq) ; 
         Gpu::ManagedVector<Real> quad_points = uHyperrect.dom_XI1q ;  // sq+1 points
         Gpu::ManagedVector<Real> quad_weights = uHyperrect.dom_Wq ;  // sq+1 weights
 
@@ -1230,6 +1234,63 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         }
 
         // step 3: project the post-processed solution 
+        
+        const int Np = uHyperrect.Np;
+        const int dom_Nq = uHyperrect.dom_Nq;
+
+        AMREX_D_TERM
+        (
+            Real const * dom_XI1q_ptr = uHyperrect.dom_XI1q.data();,
+            Real const * dom_XI2q_ptr = uHyperrect.dom_XI2q.data();,
+            Real const * dom_XI3q_ptr = uHyperrect.dom_XI3q.data();
+        )
+        Real const * dom_Wq_ptr = uHyperrect.dom_Wq.data();
+        Real const * dom_BF_ptr = uHyperrect.dom_BF.data(); 
+        
+        Real const * iMM_ptr = uHyperrect.iMM.data();
+
+        MultiFab X_star_DG;
+        X_star_DG.define(iGeom.cc_ba, iGeom.dm, sNp_star * N_U, 0 );
+        for (MFIter mfi(X_star_DG); mfi.isValid(); ++mfi)
+        {
+            const Box & bx = mfi.validbox();
+            Array4<Real const> const & X_star_fab = X_star.array(mfi);
+            Array4<Real      > const & X_star_DG_fab = X_star_DG.array(mfi);
+
+            // loop over cells
+            // do the projection
+            ParallelFor(bx,N_U,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
+            {
+                // LOCAL VARIABLES
+                Real integrand;
+                // PROJECTION
+                for (int q = 0; q < dom_Nq; ++q)
+                {
+                    // Eval the integral
+                    for (int rs = 0; rs < Np; ++rs)
+                    {
+                        integrand = 0.0;
+                        for (int cs = 0; cs < Np; ++cs) integrand += iMM_ptr[rs+cs*Np]*dom_BF_ptr[q+cs*dom_Nq];
+                        integrand *= X_star_fab(i,j,k,q+ru*dom_Nq);
+
+                        // Sum integral contribution
+                        
+                        X_star_DG_fab(i,j,k,rs+ru*Np) += integrand*dom_Wq_ptr[q];
+                    }
+
+                }
+
+            
+            });
+            Gpu::synchronize();
+
+
+        }
+
+
+
+
 
 
     }
