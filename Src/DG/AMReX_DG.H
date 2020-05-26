@@ -1251,6 +1251,8 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
         MultiFab X_star_DG;
         X_star_DG.define(iGeom.cc_ba, iGeom.dm, sNp_star * N_U, 0 );
+
+        
         for (MFIter mfi(X_star_DG); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
@@ -1275,7 +1277,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                         integrand *= X_star_fab(i,j,k,q+ru*dom_Nq);
 
                         // Sum integral contribution
-                        
+
                         X_star_DG_fab(i,j,k,rs+ru*Np) += integrand*dom_Wq_ptr[q];
                     }
 
