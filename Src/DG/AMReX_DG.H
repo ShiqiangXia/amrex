@@ -616,6 +616,7 @@ public:
                         
                         // EXACT SOLUTION
                         IBVP.F_EXACT(t, x, Ue);
+                        Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
 
                         integrand = std::abs(Ue[ru]);
                         err_fab(i,j,k,0) += integrand*w;
@@ -1122,6 +1123,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
 
         // points of interests
         Gpu::ManagedVector<Real> points = quad_points;
+        const int Npoints_1D = points.size();
         
 
         // compute the convolution matrix
@@ -1138,8 +1140,8 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         MultiFab X_star;
         MultiFab X_DG_temp;
         const int one_side_support = 2*sp;
-        const int Npoints_1D = points.size();
         const int Nj_1D = 4*sp+1 ;
+
 #if (AMREX_SPACEDIM == 1)
         const int Npoints = Npoints_1D;
         const int Nj = Nj_1D;
@@ -1156,7 +1158,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         // Multifab to store post-processed data
         X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
 
-        X_DG_temp.define(iGeom.cc_ba,iGeom.dm,sNp*N_U,one_side_support); //MultiFab with 2k ghoast cells
+        X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, one_side_support); //MultiFab with 2k ghoast cells
 
         // copy from the DG solution
         MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
@@ -1210,7 +1212,8 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
 
                         )
                         
-                            Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                             Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                            // Real temp_var = 1.0;
                             
                             for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
                             {
@@ -1222,7 +1225,11 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
                         }
                         
                     }  
+                    
+                    
 
+                     Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<points[point_iter%Npoints_1D]<<",point_y: "<<points[ ( (point_iter - point_iter%Npoints_1D)/Npoints_1D )%Npoints_1D ] <<", "<<"X_star_fab: "<<X_star_fab(i,j,k, point_iter + ru * Npoints)<<std::endl;
+                    
                 }
                 
 
@@ -1243,7 +1250,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         Real const * dom_BF_ptr = dHyperreect.dom_BF.data(); 
         Real const * iMM_ptr = dHyperreect.iMM.data();
         // MultiFab X_star_DG;
-        
+
        this->X_star_DG.define(iGeom.cc_ba, iGeom.dm, Np * N_U, 0 );
 
         for (MFIter mfi(X_star_DG); mfi.isValid(); ++mfi)
