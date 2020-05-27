@@ -632,6 +632,8 @@ public:
 
         // SUM =============================
 Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
+Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
+Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         err = (error.sum(1))/(error.sum(0));
         // =================================
 
@@ -1165,7 +1167,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         {
             const Box & bx = mfi.validbox();
             Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
-            Array4<Real      > const & X_star_fab = X_star.array(mfi);
+            Array4<Real> const & X_star_fab = X_star.array(mfi);
             
             // loop all cells in a box
             ParallelFor(bx,N_U,
@@ -1241,13 +1243,14 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         Real const * dom_BF_ptr = dHyperreect.dom_BF.data(); 
         Real const * iMM_ptr = dHyperreect.iMM.data();
         // MultiFab X_star_DG;
+        
        this->X_star_DG.define(iGeom.cc_ba, iGeom.dm, Np * N_U, 0 );
 
         for (MFIter mfi(X_star_DG); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
             Array4<Real const> const & X_star_fab = X_star.array(mfi);
-            Array4<Real      > const & X_star_DG_fab = this->X_star_DG.array(mfi);
+            Array4<Real> const & X_star_DG_fab = this->X_star_DG.array(mfi);
 
             // loop over cells
             // do the projection
@@ -1263,6 +1266,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                     for (int rs = 0; rs < Np; ++rs)
                     {
                         integrand = 0.0;
+                        X_star_DG_fab(i,j,k,rs+ru*Np) = 0.0;
                         //inverse mass matrix times basis_function(quadrature point)
 
                         for (int cs = 0; cs < Np; ++cs) integrand += iMM_ptr[rs+cs*Np]*dom_BF_ptr[q+cs*dom_Nq];
@@ -1274,16 +1278,16 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 
                 }
 
-            
+            // Print()<<X_star_DG_fab(i,j,k,0)<<std::endl;
             });
             Gpu::synchronize();
+
+            
 
 
         }
 
 
-        // step 4: evalue error;
-        
 
 
 
@@ -1355,6 +1359,7 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                 // INITIALIZATION
                 err_fab(i,j,k,0) = 0.0;
                 err_fab(i,j,k,1) = 0.0;
+                // Print()<<X_fab(i,j,k,0)<<std::endl;
 
                 // LOCAL PARAMETERS
                 const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
@@ -1413,6 +1418,8 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
                         for (int cu = 0; cu < N_U; ++cu)
                         {
                             sol.set_fab_ptrs(BF_i, BF_j, BF_k, cu);
+
+                            
                             
                             Uh[cu] = sol._eval_unsafe_();
                         }
@@ -1434,7 +1441,9 @@ Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         // ============================================================
 
         // SUM =============================
-Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
+        Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
+        Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
+        Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         err = (error.sum(1))/(error.sum(0));
         // =================================
 

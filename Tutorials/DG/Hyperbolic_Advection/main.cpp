@@ -341,7 +341,7 @@ amrex::Print() << "#############################################################
     iGeom.ProjectDistanceFunctions(LinAdv);
     iGeom.EvalImplicitMesh(LinAdv, false);
     MatFactory.Eval(iGeom);
-    
+
     MatFactory2.Eval(iGeom);
 
     dG.SetICs(iGeom, MatFactory, LinAdv);

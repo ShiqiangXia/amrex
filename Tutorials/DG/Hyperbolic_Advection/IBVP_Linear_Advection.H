@@ -65,6 +65,9 @@ public:
     amrex::Real F_U0(const int & u, const amrex::Real * x) const
     {
         const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(0.5, 0.75, 0.5)};
+#if (AMREX_SPACEDIM == 1)
+        amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0]));
+#endif
 #if (AMREX_SPACEDIM == 2)
         amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
 #endif
@@ -155,6 +158,9 @@ public:
                      const amrex::Real * U) const
     {
         const amrex::Real aV = this->F_aV(t, x);
+#if (AMREX_SPACEDIM == 1)
+        const amrex::Real h = dx[0];
+#endif
 #if (AMREX_SPACEDIM == 2)
         const amrex::Real h = std::min(dx[0], dx[1]);
 #endif
