@@ -293,7 +293,7 @@ public:
                 Print()<<X_fab(i,j,k,3)<<std::endl;
                 Print()<<"i: "<<i<<"j: "<<j<<"k: "<<k<<std::endl;
                 */
-               
+
             });
             Gpu::synchronize();
         }
@@ -308,7 +308,7 @@ public:
         Real CFL;
         if (this->isPDEsSystemHyperbolic() && this->isTimeSteppingRungeKutta())
         {
-            CFL = 0.99/(2.0*MatFactory.space_p+1.0);
+            CFL = 1.0/(2.0*MatFactory.space_p+1.0);
         }
         else
         {
