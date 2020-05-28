@@ -195,7 +195,7 @@ amrex::Print() << "#############################################################
         pp_dG.get("time_p", inputs.dG.time_p);
 
         // choose quadrature basedn on DG polynomial k
-        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, 2*inputs.dG.space_p+1);
+        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+4);
 
         pp_dG.query("use_slope_limiter", inputs.dG.use_slope_limiter);
         if      (inputs.dG.use_slope_limiter == "true")  inputs.dG.use_slope_limiter_flag = true;
@@ -319,7 +319,7 @@ amrex::Print() << "#############################################################
     dG.InitData(iGeom, MatFactory);
 
     //SX ========
-    amrex::DG::MatrixFactory<N_PHI, N_DOM> MatFactory2(indices_box, real_box, ba, dm, geom, 2*inputs.dG.space_p+1, inputs.dG.time_p, inputs.dG.space_q, 0);
+   //  amrex::DG::MatrixFactory<N_PHI, N_DOM> MatFactory2(indices_box, real_box, ba, dm, geom, 2*inputs.dG.space_p+1, inputs.dG.time_p, inputs.dG.space_q, 0);
     // ================================================================
 
     // DESTINATION FOLDER =============================================
@@ -342,7 +342,7 @@ amrex::Print() << "#############################################################
     iGeom.EvalImplicitMesh(LinAdv, false);
     MatFactory.Eval(iGeom);
 
-    MatFactory2.Eval(iGeom);
+    // MatFactory2.Eval(iGeom);
 
     dG.SetICs(iGeom, MatFactory, LinAdv);
 
@@ -426,7 +426,8 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
         amrex::Real err2;
         amrex::Print()<<"TEST~~~~~"<<std::endl;
 
-        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory2, LinAdv);
+        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
+        amrex::Print() << "| Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
 
 
         // WRITE TO OUTPUT

@@ -94,6 +94,7 @@ struct RungeKutta
         }
         else if (RK_order == 3)
         {
+            /*
             this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, X_old, this->dXdt[0], IBVP);
 
             MultiFab::Copy(this->X[1], X_old, 0, 0, X_n_comp, ngr);
@@ -110,6 +111,26 @@ struct RungeKutta
             MultiFab::Saxpy(X_new,     dt/6.0, this->dXdt[0], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new,     dt/6.0, this->dXdt[1], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new, 2.0*dt/3.0, this->dXdt[2], 0, 0, X_n_comp, ngr);
+            */
+
+            // SX++++++++++++++++++
+            // SSP RK
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, X_old, this->dXdt[0], IBVP);
+            MultiFab::Copy(this->X[1], X_old, 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[1], dt, this->dXdt[0], 0, 0, X_n_comp, ngr);
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[1], this->dXdt[1], IBVP);
+            MultiFab::Copy(this->X[2], this->X[1], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[2], dt, this->dXdt[1], 0, 0, X_n_comp, ngr);
+
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[2], this->dXdt[2], IBVP);
+
+            MultiFab::Saxpy(X_new,    2.0*dt/3.0, this->dXdt[0], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,     dt/6.0, this->dXdt[1], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,  dt/6.0, this->dXdt[2], 0, 0, X_n_comp, ngr);
+            
+            //+++++++++++++++++++++++++
         }
         else if (RK_order == 4)
         {

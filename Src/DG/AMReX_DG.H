@@ -32,8 +32,10 @@ private:
     RungeKutta<N_PHI, N_DOM, N_U> RK;
 
     // Solution
-    MultiFab X_old, X_new;
-    MultiFab X_star_DG;
+        
+    MultiFab X_old, X_new ;
+    // MultiFab X_star_DG;
+    MultiFab X_star;
     // ################################################################
 
 public:
@@ -297,7 +299,7 @@ public:
         Real CFL;
         if (this->isPDEsSystemHyperbolic() && this->isTimeSteppingRungeKutta())
         {
-            CFL = 1.0/(2.0*MatFactory.space_p+1.0);
+            CFL = 0.99/(2.0*MatFactory.space_p+1.0);
         }
         else
         {
@@ -616,7 +618,7 @@ public:
                         
                         // EXACT SOLUTION
                         IBVP.F_EXACT(t, x, Ue);
-                        Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
+                        // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
 
                         integrand = std::abs(Ue[ru]);
                         err_fab(i,j,k,0) += integrand*w;
@@ -627,6 +629,8 @@ public:
                     }
                 }
             });
+
+
             Gpu::synchronize();
         }
         // ============================================================
@@ -634,7 +638,6 @@ public:
         // SUM =============================
 Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
 Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
-Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         err = (error.sum(1))/(error.sum(0));
         // =================================
 
@@ -1137,7 +1140,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
             // 3. do the convolution
 
         // store data for the post-processed solution
-        MultiFab X_star;
+        // MultiFab X_star;
         MultiFab X_DG_temp;
         const int one_side_support = 2*sp;
         const int Nj_1D = 4*sp+1 ;
@@ -1228,7 +1231,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
                     
                     
 
-                     Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<points[point_iter%Npoints_1D]<<",point_y: "<<points[ ( (point_iter - point_iter%Npoints_1D)/Npoints_1D )%Npoints_1D ] <<", "<<"X_star_fab: "<<X_star_fab(i,j,k, point_iter + ru * Npoints)<<std::endl;
+                     // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<points[point_iter%Npoints_1D]<<",point_y: "<<points[ ( (point_iter - point_iter%Npoints_1D)/Npoints_1D )%Npoints_1D ] <<", "<<"X_star_fab: "<<X_star_fab(i,j,k, point_iter + ru * Npoints)<<std::endl;
                     
                 }
                 
@@ -1241,6 +1244,8 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
             
 
         }
+
+        /*
 
         // step 3: project the post-processed solution 
         UnitHyperrectangle<AMREX_SPACEDIM> dHyperreect(sp_star,sq) ; 
@@ -1291,17 +1296,11 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
 
             
 
+            
+
 
         }
-
-
-
-
-
-
-
-
-
+        */
 
 
 
@@ -1333,14 +1332,14 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         // IMPLICIT MESH
 #ifdef AMREX_USE_CUDA
         const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_device_mem.data();
-        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_device_mem.data();
+        // const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_device_mem.data();
 #else
         const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_host_mem.data();
-        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_host_mem.data();
+        // const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_host_mem.data();
 #endif
 
         // DG
-        const int sp = MatFactory.space_p;
+        // const int sp = MatFactory.space_p;
         // ============================================================
 
         // VARIABLES ==================================================
@@ -1356,8 +1355,8 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
             Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
             Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
             Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
-            Array4<long const> const & space_Dom_BF_pos_fab = MatFactory.space_Dom_BF_pos.array(mfi);
-            Array4<Real const> const & X_fab = this->X_star_DG.array(mfi);
+            // Array4<long const> const & space_Dom_BF_pos_fab = MatFactory.space_Dom_BF_pos.array(mfi);
+            Array4<Real const> const & X_fab = this->X_star.array(mfi);
             Array4<Real> const & err_fab = error.array(mfi);
 
             ParallelFor(bx,
@@ -1373,20 +1372,22 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
 
                 // LOCAL VARIABLES
                 int dom, etype;
-                int BF_i, BF_j, BF_k;
+                // int BF_i, BF_j, BF_k;
                 Real x[AMREX_SPACEDIM], w;
                 Real Uh[N_U], Ue[N_U];
                 Real integrand;
 
                 // QUADRATURE INFO
                 int dom_Nq;
-                long eDomQuad_pos, qi_pos, space_BF_pos;
+                long eDomQuad_pos, qi_pos;// space_BF_pos;
                 const Real * xptr;
-                const Real * BF_ptr;
+                // const Real * BF_ptr;
 
                 // Data structures used to compute the basis functions
                 // and the unknown fields
-                DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
+
+                //SX
+                // DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
 
                 // CYCLE OVER THE UNKNOWN FIELDS
                 for (int ru = 0; ru < N_U; ++ru)
@@ -1395,7 +1396,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
 
                     // Get the support of the basis functions
-                    BF_CELL(i, j, k, etype, BF_i, BF_j, BF_k);
+                    // BF_CELL(i, j, k, etype, BF_i, BF_j, BF_k);
 
                     // Quadrature info
                     dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
@@ -1403,9 +1404,11 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
                     xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
 
                     // Basis functions info
-                    space_BF_pos = space_Dom_BF_pos_fab(i,j,k,DG_DOM_BF_INFO_N_COMP_PER_DOM*dom);
-                    BF_ptr = &space_Dom_BF_mem_ptr[space_BF_pos];
-                    sol.set_BF_ptrs(BF_ptr);
+                    //space_BF_pos = space_Dom_BF_pos_fab(i,j,k,DG_DOM_BF_INFO_N_COMP_PER_DOM*dom);
+                    //BF_ptr = &space_Dom_BF_mem_ptr[space_BF_pos];
+
+                     //SX
+                    // sol.set_BF_ptrs(BF_ptr);
 
                     // COMPUTE THE INTEGRALS
                     for (int qi = 0; qi < dom_Nq; ++qi)
@@ -1421,14 +1424,17 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
                         w = xptr[qi_pos+AMREX_SPACEDIM]; w = w*aJ;
                         
                         // SOLUTION
-                        sol._eval_BF_only_table_(qi);
+                        //SX
+                        // sol._eval_BF_only_table_(qi);
                         for (int cu = 0; cu < N_U; ++cu)
                         {
-                            sol.set_fab_ptrs(BF_i, BF_j, BF_k, cu);
+                            //SX
+                            //sol.set_fab_ptrs(BF_i, BF_j, BF_k, cu);
 
                             
                             
-                            Uh[cu] = sol._eval_unsafe_();
+                            //Uh[cu] = sol._eval_unsafe_();
+                            Uh[cu] = X_fab(i,j,k, qi + cu*dom_Nq);
                         }
                         
                         // EXACT SOLUTION
@@ -1450,7 +1456,7 @@ Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
         // SUM =============================
         Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
         Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
-        Print() << "err: " << (error.sum(1))/(error.sum(0))<< std::endl;
+        
         err = (error.sum(1))/(error.sum(0));
         // =================================
 
