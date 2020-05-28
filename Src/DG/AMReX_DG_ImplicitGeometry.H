@@ -367,8 +367,10 @@ struct ImplicitGeometry
                         PHI_fab(i,j,k,rs+ru*Np) += integrand*dom_Wq_ptr[q];
                     }
                 }
+
             });
             Gpu::synchronize();
+            
         }
         this->PHI.FillBoundary(this->geom.periodicity());
         // ============================================================

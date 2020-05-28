@@ -285,6 +285,15 @@ public:
                     for (int rs = 0; rs < sNp; ++rs)
                         X_fab(i,j,k,rs+ru*sNp) = Xh[rs];
                 }
+
+                /*
+                 Print()<<X_fab(i,j,k,0)<<std::endl;
+                Print()<<X_fab(i,j,k,1)<<std::endl;
+                Print()<<X_fab(i,j,k,2)<<std::endl;
+                Print()<<X_fab(i,j,k,3)<<std::endl;
+                Print()<<"i: "<<i<<"j: "<<j<<"k: "<<k<<std::endl;
+                */
+               
             });
             Gpu::synchronize();
         }
@@ -620,11 +629,11 @@ public:
                         IBVP.F_EXACT(t, x, Ue);
                         // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
 
-                        integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
-                        integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;
                     }
                 }
@@ -636,9 +645,9 @@ public:
         // ============================================================
 
         // SUM =============================
-Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
-Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
-        err = (error.sum(1))/(error.sum(0));
+Print() << "(error.sum(0)): " << std::sqrt(error.sum(0)) << std::endl;
+Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
+        err = std::sqrt(error.sum(1))/std::sqrt(error.sum(0));
         // =================================
 
         return err;
@@ -1440,11 +1449,13 @@ Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
                         // EXACT SOLUTION
                         IBVP.F_EXACT(t, x, Ue);
 
-                        integrand = std::abs(Ue[ru]);
+                        //integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
-                        integrand = std::abs(Ue[ru]);
+                        //integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;
                     }
                 }
@@ -1454,10 +1465,10 @@ Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
         // ============================================================
 
         // SUM =============================
-        Print() << "(error.sum(0)): " << (error.sum(0)) << std::endl;
-        Print() << "(error.sum(1)): " << (error.sum(1)) << std::endl;
+        Print() << "(error.sum(0)): " << std::sqrt(error.sum(0)) << std::endl;
+        Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         
-        err = (error.sum(1))/(error.sum(0));
+        err = std::sqrt(error.sum(1))/std::sqrt(error.sum(0));
         // =================================
 
         return err;

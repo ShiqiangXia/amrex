@@ -284,7 +284,11 @@ amrex::Print() << "#############################################################
     // ================================================================
 
     // BOX ARRAY ======================================================
-    amrex::Box indices_box({AMREX_D_DECL(0, 0, 0)}, inputs.mesh.n_cells-1);
+    amrex::IntVect lo(AMREX_D_DECL(0, 0, 0));
+     amrex::Box indices_box(lo, inputs.mesh.n_cells-1);
+    // amrex::IntVect lo(AMREX_D_DECL(0, 0, 0));
+    // amrex::IntVect hi(AMREX_D_DECL(15, 15, 15));  
+    // amrex::Box indices_box(lo, hi);
 
     amrex::BoxArray ba;
     ba.define(indices_box);
@@ -318,10 +322,6 @@ amrex::Print() << "#############################################################
     amrex::DG::DG<N_PHI, N_DOM, N_U> dG("Hyperbolic", "Runge-Kutta");
     dG.InitData(iGeom, MatFactory);
 
-    //SX ========
-   //  amrex::DG::MatrixFactory<N_PHI, N_DOM> MatFactory2(indices_box, real_box, ba, dm, geom, 2*inputs.dG.space_p+1, inputs.dG.time_p, inputs.dG.space_q, 0);
-    // ================================================================
-
     // DESTINATION FOLDER =============================================
     const std::string dG_order = "p"+std::to_string(inputs.dG.space_p);
     std::string ics_type;
@@ -342,7 +342,7 @@ amrex::Print() << "#############################################################
     iGeom.EvalImplicitMesh(LinAdv, false);
     MatFactory.Eval(iGeom);
 
-    // MatFactory2.Eval(iGeom);
+    
 
     dG.SetICs(iGeom, MatFactory, LinAdv);
 
@@ -395,7 +395,7 @@ amrex::Print() << "| COMPUTING TIME STEP: n = " << n+1 << " time step: " << dt <
         {
             amrex::Real err;
             err = dG.EvalErrorNorm(time, iGeom, MatFactory, LinAdv);
-amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std::setw(12) << err << std::endl;
+amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << std::setw(12) << err << std::endl;
         }
 
         // WRITE TO OUTPUT
@@ -419,7 +419,6 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
     if (inputs.dG.post_processing_by_convolution_flag)
     {
         // post-process the dG solution by convolution filtering
-        amrex::Print()<<"TEST~~~~~"<<std::endl;
         
         dG.Convolution_Postprocessing(iGeom,MatFactory);
 
@@ -427,7 +426,7 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
         amrex::Print()<<"TEST~~~~~"<<std::endl;
 
         err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
-        amrex::Print() << "| Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
+        amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
 
 
         // WRITE TO OUTPUT
