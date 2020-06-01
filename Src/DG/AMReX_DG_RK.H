@@ -115,21 +115,36 @@ struct RungeKutta
 
             // SX++++++++++++++++++
             // SSP RK
-            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, X_old, this->dXdt[0], IBVP);
+            // X_new = X_old   u0
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, X_old, this->dXdt[0], IBVP); 
             MultiFab::Copy(this->X[1], X_old, 0, 0, X_n_comp, ngr);
-            MultiFab::Saxpy(this->X[1], dt, this->dXdt[0], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[1], dt, this->dXdt[0], 0, 0, X_n_comp, ngr); // u1
 
             this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[1], this->dXdt[1], IBVP);
             MultiFab::Copy(this->X[2], this->X[1], 0, 0, X_n_comp, ngr);
-            MultiFab::Saxpy(this->X[2], dt, this->dXdt[1], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[2], dt, this->dXdt[1], 0, 0, X_n_comp, ngr); // u2
 
 
             this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[2], this->dXdt[2], IBVP);
+            
+             MultiFab::Copy(this->X[0], this->X[2], 0, 0, X_n_comp, ngr);
+             MultiFab::Saxpy(this->X[0], dt, this->dXdt[2], 0, 0, X_n_comp, ngr); // u3
 
+            // u_new = 1/3 u0 + 1/2 u1 + 1/6 u3
+            
+             MultiFab::Saxpy(X_new,    (1.0/3.0 - 1.0), X_old, 0, 0, X_n_comp, ngr);
+             MultiFab::Saxpy(X_new,    1.0/2.0, this->X[1], 0, 0, X_n_comp, ngr);
+             MultiFab::Saxpy(X_new,    1.0/6.0, this->X[0], 0, 0, X_n_comp, ngr);
+
+             
+             
+
+            /*
             MultiFab::Saxpy(X_new,    2.0*dt/3.0, this->dXdt[0], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new,     dt/6.0, this->dXdt[1], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new,  dt/6.0, this->dXdt[2], 0, 0, X_n_comp, ngr);
-            
+            */
+
             //+++++++++++++++++++++++++
         }
         else if (RK_order == 4)
@@ -155,6 +170,39 @@ struct RungeKutta
             MultiFab::Saxpy(X_new, dt/3.0, this->dXdt[1], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new, dt/3.0, this->dXdt[2], 0, 0, X_n_comp, ngr);
             MultiFab::Saxpy(X_new, dt/6.0, this->dXdt[3], 0, 0, X_n_comp, ngr);
+        }
+        else if (RK_order == 5)
+        {
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, X_old, this->dXdt[0], IBVP); 
+            MultiFab::Copy(this->X[1], X_old, 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[1], dt, this->dXdt[0], 0, 0, X_n_comp, ngr); // u1
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[1], this->dXdt[1], IBVP);
+            MultiFab::Copy(this->X[2], this->X[1], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[2], dt, this->dXdt[1], 0, 0, X_n_comp, ngr); // u2
+
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[2], this->dXdt[2], IBVP);
+            MultiFab::Copy(this->X[3], this->X[2], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[3], dt, this->dXdt[2], 0, 0, X_n_comp, ngr); // u3
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[3], this->dXdt[3], IBVP);
+            MultiFab::Copy(this->X[4], this->X[3], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[4], dt, this->dXdt[3], 0, 0, X_n_comp, ngr); // u4
+
+            this->Eval_dXdt_Hyperbolic(t, iGeom, MatFactory, this->X[4], this->dXdt[4], IBVP);
+            MultiFab::Copy(this->X[0], this->X[4], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(this->X[0], dt, this->dXdt[4], 0, 0, X_n_comp, ngr); // u5
+
+            // u_new = 11/30 u0 + 3/8 u1 + 1/6 u2 + 1/12 u3 + 1/120 u5
+
+            MultiFab::Saxpy(X_new,    (11.0/30.0 - 1.0), X_old, 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,    3.0/8.0, this->X[1], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,    1.0/6.0, this->X[2], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,    1.0/12.0, this->X[3], 0, 0, X_n_comp, ngr);
+            MultiFab::Saxpy(X_new,    1.0/120.0, this->X[0], 0, 0, X_n_comp, ngr);
+
+
         }
         else
         {
