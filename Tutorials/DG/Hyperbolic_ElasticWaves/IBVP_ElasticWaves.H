@@ -14,7 +14,7 @@
 #define N_S 6
 #endif
 
-#define N_U (N_V+N_S)
+#define N_U (N_V+N_S)  // velocity + stress symmetric part : d+ d*(d+1)/2)
 // --------------------------------------------------------------------
 
 // PDES PARAMETERS ----------------------------------------------------

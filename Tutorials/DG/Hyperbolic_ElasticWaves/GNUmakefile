@@ -3,6 +3,9 @@ AMREX_HOME ?= ../../../
 #######################################################################
 
 COMP = gnu
+CXXSTD = c++14 -g
+
+
 DEBUG = TRUE
 USE_MPI = TRUE
 USE_CUDA = FALSE
