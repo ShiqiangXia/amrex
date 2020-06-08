@@ -2,7 +2,7 @@
 AMREX_HOME ?= ../../..
 #######################################################################
 
-DEBUG = TRUE
+DEBUG = FALSE
 
 DIM = 3
 
@@ -10,6 +10,7 @@ COMP    = gcc
 CXXSTD = c++14 -g
 
 USE_MPI = TRUE
+
 
 USE_CUDA = FALSE
 
