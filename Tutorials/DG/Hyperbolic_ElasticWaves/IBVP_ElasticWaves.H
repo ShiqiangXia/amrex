@@ -452,7 +452,7 @@ public:
 #define ICS_EIGEN_STATE 0
 #define ICS_INITIAL_STRAIN 1
 #define ICS_INITIAL_STRESS 2
-#define ICS 1
+#define ICS 0
 
     AMREX_GPU_HOST_DEVICE
     amrex::Real F_U0(const int & u, const amrex::Real * x) const
@@ -466,7 +466,9 @@ public:
         const amrex::Real x_dot_un = AMREX_D_PICK(x[0]*un[0], x[0]*un[0]+x[1]*un[1], x[0]*un[0]+x[1]*un[1]+x[2]*un[2]);
         const amrex::Real d = 0.2;
         const amrex::Real f0 = std::exp(-100.0*(x_dot_un-d)*(x_dot_un-d));
-        const int iv = 3;
+        //const amrex::Real f0 = std::sin(2*M_PI*x_dot_un);
+
+        const int iv = 3; 
         
         res = this->ICs_P_v[u+iv*N_U]*f0;
 #endif
@@ -550,6 +552,26 @@ public:
     // ================================================================
 
     // EXACT SOLUTION =================================================
+    void F_EXACT(const amrex::Real & t, const amrex::Real * x,
+                 amrex::Real * U) const
+    {
+        const amrex::Real un[AMREX_SPACEDIM] = {AMREX_D_DECL(this->ICs_un[0], this->ICs_un[1], this->ICs_un[2])};
+        const amrex::Real x_dot_un = AMREX_D_PICK(x[0]*un[0], x[0]*un[0]+x[1]*un[1], x[0]*un[0]+x[1]*un[1]+x[2]*un[2]);
+
+        const int iv = 3;
+        const amrex::Real speed = this->ICs_P_w[iv]; // eigenvaule
+
+        const amrex::Real d = 0.2;
+        const amrex::Real y = x_dot_un - speed*t;
+        const amrex::Real f0 = std::exp(-100.0*(y-d)*(y-d));
+
+        for(int ru = 0; ru < N_U; ++ru)
+        {  
+            U[ru] = this->ICs_P_v[ru+iv*N_U] * f0; 
+        }
+
+
+    }
     // ================================================================
 
     // BOUNDARY CONDITIONS ============================================
