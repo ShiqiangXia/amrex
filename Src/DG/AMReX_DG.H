@@ -629,11 +629,11 @@ public:
                         IBVP.F_EXACT(t, x, Ue);
                         // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
 
-                        integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
-                        integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;
                     }
                 }
@@ -648,6 +648,7 @@ public:
 Print() << "(error.sum(0)): " << std::sqrt(error.sum(0)) << std::endl;
 Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         err = std::sqrt(error.sum(1))/std::sqrt(error.sum(0));
+        // err = std::sqrt(error.sum(1));
         // =================================
 
         return err;
@@ -1469,6 +1470,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         
         err = std::sqrt(error.sum(1))/std::sqrt(error.sum(0));
+        // err = std::sqrt(error.sum(1));
         // =================================
 
         return err;
@@ -1481,5 +1483,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 } // namespace DG
 } // namespace amrex
+
 
 #endif
