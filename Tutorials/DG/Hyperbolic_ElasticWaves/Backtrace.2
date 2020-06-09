@@ -12,11 +12,11 @@
 
  6: amrex::VTK::PrintUnstructuredGridData_VTU(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, unsigned int const&, unsigned int const&, amrex::Vector<double, std::__1::allocator<double> > const&, amrex::Vector<unsigned int, std::__1::allocator<unsigned int> > const&, amrex::Vector<unsigned int, std::__1::allocator<unsigned int> > const&, amrex::Vector<unsigned char, std::__1::allocator<unsigned char> > const&, amrex::Vector<amrex::Vector<int, std::__1::allocator<int> >, std::__1::allocator<amrex::Vector<int, std::__1::allocator<int> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, amrex::Vector<amrex::Vector<double, std::__1::allocator<double> >, std::__1::allocator<amrex::Vector<double, std::__1::allocator<double> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_VTK_utils.cpp:235)
 
- 7: amrex::DG::ImplicitGeometry<2, 1>::Export_VTK_Mesh(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG_ImplicitGeometry.H:1836)
+ 7: void amrex::DG::DG<2, 1, 5>::Export_VTK<ELASTIC_WAVES>(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, std::__1::vector<int, std::__1::allocator<int> > const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, double const&, amrex::DG::ImplicitGeometry<2, 1> const&, amrex::DG::MatrixFactory<2, 1> const&, ELASTIC_WAVES const&) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG.H:1092)
 
- 8: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:116)
+ 8: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:161)
 
- 9: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:187)
+ 9: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:196)
 
 10: start (in libdyld.dylib) + 1
 

@@ -629,11 +629,11 @@ public:
                         IBVP.F_EXACT(t, x, Ue);
                         // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<xptr[qi_pos+0]<<",point_y: "<<xptr[qi_pos+1]<<", "<<"u exact: "<<Ue[ru]<<"uh : "<<Uh[ru]<<std::endl;
 
-                        integrand = std::pow(Ue[ru],2.0);
+                        integrand = std::abs(Ue[ru]);
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
-                        integrand = std::pow(Ue[ru],2.0);
+                        integrand = std::abs(Ue[ru]);
                         err_fab(i,j,k,1) += integrand*w;
                     }
                 }

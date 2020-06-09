@@ -563,7 +563,22 @@ public:
 
         const amrex::Real d = 0.2;
         const amrex::Real y = x_dot_un - speed*t;
-        const amrex::Real f0 = std::exp(-100.0*(y-d)*(y-d));
+        amrex::Real temp;
+        
+
+        if (y>=0)
+        {
+            const amrex::Real z= std::floor(y);
+            temp = y - z ;
+        }
+        else
+        {
+            const amrex::Real z = std::floor( std::abs(y) );
+            temp = y + z +1.0;
+
+        }
+
+        const amrex::Real f0 = std::exp(-100.0*(temp-d)*(temp-d));
 
         for(int ru = 0; ru < N_U; ++ru)
         {  
