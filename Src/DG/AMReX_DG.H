@@ -586,6 +586,7 @@ public:
 
                 // CYCLE OVER THE UNKNOWN FIELDS
                 for (int ru = 0; ru < N_U; ++ru)
+                //for (int ru = 0; ru < 1; ++ru)
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);

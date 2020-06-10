@@ -106,7 +106,7 @@ amrex::Print() << "#############################################################
     dG.SetICs(iGeom, MatFactory, Waves);
     
     // WRITE TO OUTPUT
-    /*
+    
     if (dG_inputs.plot_int > 0)
     {
         int n = 0;
@@ -117,7 +117,7 @@ amrex::Print() << "#############################################################
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, dG_inputs.time.n_steps);
         dG.Export_VTK(dst_folder, "Solution", n, dG_inputs.time.n_steps, field_domains, field_names, time, iGeom, MatFactory, Waves);
     }
-    */
+    
     // ================================================================
 
     // START THE ANALYSIS (ADVANCE IN TIME) ===========================
@@ -156,14 +156,14 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
 
 
         // WRITE TO OUTPUT
-        /*
+        
         if (dG_inputs.plot_int > 0 && n%dG_inputs.plot_int == 0)
         {
             std::vector<int> field_domains = {0, 0, 0, 0, 0};
             std::vector<std::string> field_names = {"V0", "V1", "S11", "S22", "S12"};
             dG.Export_VTK(dst_folder, "Solution", n, dG_inputs.time.n_steps, field_domains, field_names, time, iGeom, MatFactory, Waves);
         }
-        */
+        
     }
     // ----------------------------------------------------------------
 

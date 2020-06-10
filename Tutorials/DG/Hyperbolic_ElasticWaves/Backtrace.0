@@ -1,22 +1,16 @@
- 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_BLBackTrace.cpp:163)
+ 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:163)
 
- 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_BLBackTrace.cpp:69)
+ 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:71)
 
- 2: amrex::ParallelDescriptor::Abort(int, bool) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_ParallelDescriptor.cpp:232)
+ 2: amrex::FileOpenFailed(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.MPI.ex) (string:1406)
 
- 3: amrex::detail::Error_host_doit(char const*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX.cpp:0)
+ 3: amrex::VTK::PrintHeaderFile_VTU(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&) (in main2d.gnu.MPI.ex) (AMReX_VTK_utils.cpp:135)
 
- 4: amrex::Error(char const*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX.H:101)
+ 4: amrex::DG::ImplicitGeometry<2, 1>::Export_VTK_Mesh(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&) const (in main2d.gnu.MPI.ex) (AMReX_DG_ImplicitGeometry.H:0)
 
- 5: amrex::FileOpenFailed(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_Utility.cpp:269)
+ 5: main_main() (in main2d.gnu.MPI.ex) (string:1406)
 
- 6: amrex::VTK::PrintHeaderFile_VTU(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_VTK_utils.cpp:130)
+ 6: main (in main2d.gnu.MPI.ex) (main.cpp:231)
 
- 7: void amrex::DG::DG<2, 1, 5>::Export_VTK<ELASTIC_WAVES>(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, std::__1::vector<int, std::__1::allocator<int> > const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, double const&, amrex::DG::ImplicitGeometry<2, 1> const&, amrex::DG::MatrixFactory<2, 1> const&, ELASTIC_WAVES const&) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG.H:1085)
-
- 8: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:161)
-
- 9: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:196)
-
-10: start (in libdyld.dylib) + 1
+ 7: start (in libdyld.dylib) + 1
 

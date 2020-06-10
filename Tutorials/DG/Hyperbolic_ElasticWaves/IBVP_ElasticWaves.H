@@ -3,6 +3,7 @@
 // IBVP PARAMETERS ####################################################
 // NUMBER OF DISTANCE FUNCTIONS/DOMAINS/UNKNOWN FIELDS ----------------
 #define N_PHI 2
+//#define N_PHI 1
 #define N_DOM 1
 
 // NUMBER OF VELOCITY COMPONENTS AND STRESS COMPONENTS
@@ -425,7 +426,8 @@ public:
         const amrex::Real PHI[N_PHI] =
         {
             -1.0,
-            phi
+            -1.0
+            //phi
         };
 
         return PHI[ph];
@@ -464,9 +466,10 @@ public:
 #if (ICS == ICS_EIGEN_STATE)
         const amrex::Real un[AMREX_SPACEDIM] = {AMREX_D_DECL(this->ICs_un[0], this->ICs_un[1], this->ICs_un[2])};
         const amrex::Real x_dot_un = AMREX_D_PICK(x[0]*un[0], x[0]*un[0]+x[1]*un[1], x[0]*un[0]+x[1]*un[1]+x[2]*un[2]);
-        const amrex::Real d = 0.2;
+        //const amrex::Real d = 0.2;
         //const amrex::Real f0 = std::exp(-100.0*(x_dot_un-d)*(x_dot_un-d));
         const amrex::Real f0 = std::sin(2*3.14159265358979*x_dot_un);
+        
 
         const int iv = 3; 
         
@@ -563,9 +566,8 @@ public:
 
         
         const amrex::Real y = x_dot_un - speed*t;
-        amrex::Real temp;
-        
 
+        amrex::Real temp;
         if (y>=0)
         {
             const amrex::Real z= std::floor(y);
@@ -577,10 +579,12 @@ public:
             temp = y + z +1.0;
 
         }
+        
 
         //const amrex::Real d = 0.2;
         //const amrex::Real f0 = std::exp(-100.0*(temp-d)*(temp-d));
-        const amrex::Real f0 = std::sin(2*3.14159265358979*temp);
+        const amrex::Real f0 = std::sin(2*3.14159265358979*y);
+        
 
         for(int ru = 0; ru < N_U; ++ru)
         {  
