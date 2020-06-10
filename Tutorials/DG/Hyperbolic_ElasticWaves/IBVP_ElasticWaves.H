@@ -466,7 +466,7 @@ public:
         const amrex::Real x_dot_un = AMREX_D_PICK(x[0]*un[0], x[0]*un[0]+x[1]*un[1], x[0]*un[0]+x[1]*un[1]+x[2]*un[2]);
         const amrex::Real d = 0.2;
         //const amrex::Real f0 = std::exp(-100.0*(x_dot_un-d)*(x_dot_un-d));
-        const amrex::Real f0 = std::sin(2*M_PI*x_dot_un);
+        const amrex::Real f0 = std::sin(2*3.14159265358979*x_dot_un);
 
         const int iv = 3; 
         
@@ -580,7 +580,7 @@ public:
 
         //const amrex::Real d = 0.2;
         //const amrex::Real f0 = std::exp(-100.0*(temp-d)*(temp-d));
-        const amrex::Real f0 = std::sin(2*M_PI*temp);
+        const amrex::Real f0 = std::sin(2*3.14159265358979*temp);
 
         for(int ru = 0; ru < N_U; ++ru)
         {  
