@@ -106,6 +106,7 @@ amrex::Print() << "#############################################################
     dG.SetICs(iGeom, MatFactory, Waves);
     
     // WRITE TO OUTPUT
+    /*
     if (dG_inputs.plot_int > 0)
     {
         int n = 0;
@@ -116,6 +117,7 @@ amrex::Print() << "#############################################################
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, dG_inputs.time.n_steps);
         dG.Export_VTK(dst_folder, "Solution", n, dG_inputs.time.n_steps, field_domains, field_names, time, iGeom, MatFactory, Waves);
     }
+    */
     // ================================================================
 
     // START THE ANALYSIS (ADVANCE IN TIME) ===========================
@@ -154,14 +156,47 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
 
 
         // WRITE TO OUTPUT
+        /*
         if (dG_inputs.plot_int > 0 && n%dG_inputs.plot_int == 0)
         {
             std::vector<int> field_domains = {0, 0, 0, 0, 0};
             std::vector<std::string> field_names = {"V0", "V1", "S11", "S22", "S12"};
             dG.Export_VTK(dst_folder, "Solution", n, dG_inputs.time.n_steps, field_domains, field_names, time, iGeom, MatFactory, Waves);
         }
+        */
     }
     // ----------------------------------------------------------------
+
+     //SX ========
+    // Post-prrocessing ==============================================
+    // Shiqiang Xia 05/15/2020
+
+    if (dG_inputs.post_processing_by_convolution_flag)
+    {
+        // post-process the dG solution by convolution filtering
+        
+        dG.Convolution_Postprocessing(iGeom,MatFactory);
+
+        amrex::Real err2;
+        amrex::Print()<<"TEST~~~~~"<<std::endl;
+
+        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, Waves);
+        amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
+
+
+        // WRITE TO OUTPUT
+
+
+        
+
+    }
+     // ================================================================
+    //SX ========
+
+
+
+
+
 
 amrex::Print() << "# END OF THE ANALYSIS                                                  " << std::endl;
     // ================================================================

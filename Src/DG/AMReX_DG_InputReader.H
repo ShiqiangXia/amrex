@@ -54,6 +54,7 @@ struct DGInput
 {
     int phi_space_p, space_p, time_p;
     int space_q, time_q;
+    
 
     DGInput()
     :
@@ -85,13 +86,18 @@ struct InputReader
     Vector<DGInput> dG;
 
     int plot_int;
+    //SX ========
+    std::string post_processing_by_convolution;
+    bool post_processing_by_convolution_flag;
+    //SX ========
     // ################################################################
 
     // CONSTRUCTOR ####################################################
     InputReader()
     :
     n_patches(1),
-    plot_int(-1)
+    plot_int(-1),
+    post_processing_by_convolution_flag(false)
     {
         // VARIABLES ==================================================
         amrex::ParmParse pp;
@@ -260,8 +266,9 @@ struct InputReader
             pp_dG.get("phi_space_p", this->dG[p].phi_space_p);
             pp_dG.get("space_p", this->dG[p].space_p);
             pp_dG.get("time_p", this->dG[p].time_p);
+            
 
-            this->dG[p].space_q = std::max(this->dG[p].phi_space_p+2, this->dG[p].space_p+2);
+            this->dG[p].space_q = std::max(this->dG[p].phi_space_p+2, this->dG[p].space_p+4);
             //this->dG[p].space_q = ?
         }
         // ============================================================
@@ -352,6 +359,10 @@ struct InputReader
 
         // OUTPUT =====================================================
         pp.query("plot_int", this->plot_int);
+        pp.query("post_processing_by_convolution", this->post_processing_by_convolution);
+        if (this->post_processing_by_convolution == "true") this->post_processing_by_convolution_flag = true;
+        else this->post_processing_by_convolution_flag  = false;
+
         // ============================================================
 
         // REPORT TO SCREEN ===========================================
