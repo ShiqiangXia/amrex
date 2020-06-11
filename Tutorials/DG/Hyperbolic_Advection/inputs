@@ -14,19 +14,19 @@ time.T = 1
 
 
 # SPACE AND TIME DISCRETIZATION #######################################
-mesh.n_cells       = 28 28 28
+mesh.n_cells       = 40 40 40
 mesh.max_grid_size = 4 4 4
 mesh.n_time_steps  = 2000
 
 # DISCONTINUOUS GALERKIN METHOD INFO
 dG.phi_space_p       = 1
-dG.space_p           = 2
-dG.time_p            = 4
+dG.space_p           = 1
+dG.time_p            = 2
 # ----------------------------------
 #######################################################################
 
 
 # POST-PROCESSING INFO ################################################
 plot_int = 10
-post_processing_by_convolution = true
+post_processing_by_convolution = false
 #######################################################################

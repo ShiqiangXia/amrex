@@ -184,6 +184,8 @@ public:
         // ------------------------------------------------------------
 
         // DIFFERENTIAL OPERATORS -------------------------------------
+
+        /*
         for (int c = N_V; c < (N_V+N_S); ++c)
         for (int r = 0; r < N_V; ++r)
         {
@@ -205,6 +207,16 @@ public:
                 this->A3[r+c*N_U] = -cI3[r-N_V+c*N_S];
             )
         }
+
+        */
+
+       for (int c = 0; c < (N_U); ++c)
+        {
+            this->A1[c+c*N_U] = 1.0 ;
+            // this->A2[c+c*N_U] = 1.0 ;
+        }
+
+       
 
         // AND THEIR EIGENVALUES
         {

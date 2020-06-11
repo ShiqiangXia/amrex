@@ -4,7 +4,7 @@ AMREX_HOME ?= ../../..
 
 DEBUG = FALSE
 
-DIM = 3
+DIM = 2
 
 COMP    = gcc
 CXXSTD = c++14 -g
