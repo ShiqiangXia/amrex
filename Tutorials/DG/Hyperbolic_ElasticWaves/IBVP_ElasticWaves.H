@@ -471,7 +471,7 @@ public:
         const amrex::Real f0 = std::sin(2*3.14159265358979*x_dot_un);
         
 
-        const int iv = 3; 
+        const int iv = 4; 
         
         res = this->ICs_P_v[u+iv*N_U]*f0;
 #endif
@@ -561,7 +561,7 @@ public:
         const amrex::Real un[AMREX_SPACEDIM] = {AMREX_D_DECL(this->ICs_un[0], this->ICs_un[1], this->ICs_un[2])};
         const amrex::Real x_dot_un = AMREX_D_PICK(x[0]*un[0], x[0]*un[0]+x[1]*un[1], x[0]*un[0]+x[1]*un[1]+x[2]*un[2]);
 
-        const int iv = 3;
+        const int iv = 4;
         const amrex::Real speed = this->ICs_P_w[iv]; // eigenvaule
 
         
