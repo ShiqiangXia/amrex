@@ -101,6 +101,8 @@ public:
         {
             // dom = 0
             0, -1,
+
+            // dom = 1
             0, +1
         };
 
@@ -115,7 +117,8 @@ public:
     {
         const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(0.25, 0.5, 0.5)};
 #if (AMREX_SPACEDIM == 2)
-        amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
+        //amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
+        amrex::Real r2 = std::sin(2*M_PI*x[0])*std::sin(2*M_PI*x[1]);
 #endif
 #if (AMREX_SPACEDIM == 3)
         amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1])+(x[2]-xc[2])*(x[2]-xc[2]));
