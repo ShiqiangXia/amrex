@@ -129,7 +129,7 @@ public:
         AMREX_D_TERM
         (
             V[0] = 1;,
-            V[1] = 0;,
+            V[1] = 1;,
             V[2] = 0.0;
         )
 #endif
