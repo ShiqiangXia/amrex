@@ -32,5 +32,5 @@ dG[0].time_p      = 2
 
 # POST-PROCESSING INFO ################################################
 plot_int = 10
-post_processing_by_convolution = false
+post_processing_by_convolution = true
 #######################################################################

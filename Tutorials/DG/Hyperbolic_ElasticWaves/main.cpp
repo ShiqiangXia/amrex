@@ -135,9 +135,10 @@ amrex::Print() << "# START OF THE ANALYSIS                                      
     {
         // COMPUTE NEXT TIME STEP
         dt = dG.Compute_dt(time+0.5*dt, iGeom, MatFactory, Waves);
+        dt = std::min(time+dt, dG_inputs.time.T) - time;
 
         // REPORT TO SCREEN
-amrex::Print() << "| COMPUTING TIME STEP: n = " << n+1 << " time step: " << dt << ", time = " << std::min(time+dt, dG_inputs.time.T) << std::endl;
+amrex::Print() << "| COMPUTING TIME STEP: n = " << n+1 << " time step: " << dt << ", time = " << time+dt << std::endl;
 
         // TIME STEP
         dG.TakeTimeStep_Hyperbolic(dt, time, iGeom, MatFactory, Waves);
