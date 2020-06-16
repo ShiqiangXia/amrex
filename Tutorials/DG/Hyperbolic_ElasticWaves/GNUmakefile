@@ -12,7 +12,7 @@ USE_MPI = TRUE
 USE_CUDA = FALSE
 
 
-DIM = 2
+DIM = 3
 
 include ./Make.package
 
