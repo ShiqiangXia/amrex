@@ -12,6 +12,8 @@ namespace DG
     const Real cr_4[9] = {153617.0/92897280, -(35411.0/1658880), 3153959.0/23224320,-(6803459.0/11612160), 18017975.0/9289728, -(6803459.0/11612160), 3153959.0/23224320, -(35411.0/1658880), 153617.0/92897280};
     const Real cr_5[11] = {-(4201.0/7983360), 30773.0/3991680, -(20813.0/380160), 2825.0/11088, -(1179649.0/1330560), 1569217.0/665280, -(1179649.0/1330560), 2825.0/11088, -(20813.0/380160), 30773.0/3991680, -(4201.0/7983360)};
 
+    const Real cr_oneside_1[5] = {1.0/9.0, -19.0/36.0, 11.0/6.0, -19.0/36.0, 1.0/9.0};
+
     void Bspline(Real x, int k, Real & out)
     {
         // Recusive define Bspline
@@ -159,7 +161,11 @@ namespace DG
     void Bspline_integral(Real * rlt, int  Np, Real center_point, Real int_upper, Real int_lower, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {
         // Compute the integral (Bspline, DG_basis_function) for each basis function
+        //
         // Integral_{lower, upper} Bspline( center_point - z/2)*Basis_m(z)dz for m = 0,1,2,..Poly degree
+        //
+        // normally upper = 1.0, lower = -1.0 (integral over one whole element)
+        //
         //Output
         // rlt: array of Np x 1, integral for each basis function
 
@@ -252,13 +258,7 @@ namespace DG
             }
         }
 
-        /*
-
-        Print()<<"AA:  "<<AA[0]<<std::endl;
-        Print()<<"AA:  "<<AA[1]<<std::endl;
-        Print()<<"AA:  "<<AA[4]<<std::endl;
-        Print()<<"AA:  "<<AA[5]<<std::endl;
-        */
+     
 
 
     }
@@ -334,6 +334,130 @@ namespace DG
         
         
     }
+
+
+// one-side kernel
+
+    void compute_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & AA,Gpu::ManagedVector<Real> & BB, int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {
+        // compute the convolution matrix based on the DG method and points of interests
+        //Output: AA,BB
+        // AA right side kernle
+        // BB left side kernl
+        // Example of right side kernel
+        //                       j=0          j=1          j=2 .....    j= 3k
+        //
+        //   boundary |_______x____________|______________|_____________|______________|______________|______________|
+        //                    ~~~~~~~~~~~~~~~support of right side kernel~~~~~~~~~~~~~~~
+
+        const int Npoints = points.size();
+        const int Np = sp+1; // k+1
+        const int Nr = 4*sp+1;  //  -2k <= r <= 2k
+        const int NJ = 3*sp+1; //  0<= j <= 3k
+        const Real iupper = 1.0;
+        const Real ilower = -1.0;
+
+        AA.resize(Npoints*Np*Nr*NJ);
+        BB.resize(Npoints*Np*Nr*NJ);
+
+        Real center_point_A, center_point_B; 
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int jj = 0; jj <  NJ; ++jj)
+            {
+                for (int rr = 0; rr < Nr; ++rr )
+                {
+                    center_point_A = points[nn]*0.5 - (rr-2*sp) - (jj);
+                    center_point_B = points[nn]*0.5 - (rr-2*sp) + (jj);
+
+                    Real rlt_A[Np];
+                    Real rlt_B[Np];
+
+                    if (jj == 0)
+                    {// has to split the integral (because we are considering one side kernel)
+                        Bspline_integral(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights);
+                        Bspline_integral(rlt_B, Np, center_point_B, points[nn], ilower, quad_points, quad_weights);
+
+                    }
+                    else
+                    {
+                        Bspline_integral(rlt_A, Np, center_point_A, iupper, ilower, quad_points, quad_weights);
+                        Bspline_integral(rlt_B, Np, center_point_B, iupper, ilower, quad_points, quad_weights);
+                    }
+                    
+
+                    for (int mm = 0; mm < Np; ++mm)
+                    {
+                        AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt_A[mm];
+                        BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt_B[mm];
+
+                    }
+                }
+            }
+        }
+
+    }
+
+
+    void get_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & matrix_r,Gpu::ManagedVector<Real> & matrix_l, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {   
+        // Precompute the convolution matrix needed for post-processing
+
+        // basic info 
+        const int Npoints = points.size();
+        const int Np = sp+1;
+        const int Nr = 4*sp+1;
+        const int NJ = 3*sp+1;
+
+        matrix_r.resize(Npoints*Np*NJ);
+        matrix_l.resize(Npoints*Np*NJ);
+        
+        //step 1. load cr
+
+        const Real * cr ;
+
+        if (sp == 1) cr = cr_oneside_1 ;
+        //else if (sp == 2) cr = cr_oneside_2;
+        //else if (sp == 3) cr = cr_oneside_3;
+        //else if (sp == 4) cr = cr_oneside_4;
+        //else if (sp == 5) cr =cr_oneside_5;
+        else
+        {
+            Print()<<"Order "<<sp<<" is not implemented"<< std::endl;
+        }
+
+        // setp 2. compute A_{n,m,r,j}
+        
+
+        Gpu::ManagedVector<Real> AA;
+        Gpu::ManagedVector<Real> BB;
+
+        compute_convolution_matrix_one_side_kernel(AA, BB, sp, points, quad_points, quad_weights);
+
+        // step 3. sum A_{n,m,r,j} * cr/2 over r
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int mm = 0; mm < Np; ++mm)
+            {
+                for (int jj = 0; jj <  NJ; ++jj)
+                {
+                    matrix_r[jj+mm*NJ + nn*NJ*Np] = 0.0;
+
+                    for (int rr = 0; rr < Nr; ++rr )
+                    {
+                       matrix_r[ jj + mm*NJ + nn*NJ*Np ] += 0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                       matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+
+                    }
+                }
+            }
+        }
+        
+        
+    }
+
 
 }
 
