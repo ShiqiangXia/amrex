@@ -33,17 +33,19 @@ namespace DG
         }
         
     }
-    void Bspline_breaks(Real * bp_breaks, int & break_flag, int deg_Bspine, Real center_point)
+    void Bspline_breaks(Real * bp_breaks, int & break_flag, int deg_Bspine, Real center_point,Real iupper, Real ilower)
     {
-        // figure out the actual integral domain
+        // figure out the actual integral domain of
+        // Int_{ilower, iupper} phi(center_point - z/2)*legendre(z)dz
+        //-1 <= ilower <= iupper <= 1
         // based on the support of the Bspline and the center_point
         // Output:
         // break_flag: type of integral we will deal with
         // bp_breaks: store the actual x_low and x_high of the integral
 
         // lower and upper bound of the integral domain
-        const Real sl = center_point - 0.5;
-        const Real sr = center_point + 0.5;
+        const Real sl = center_point - 0.5*iupper;
+        const Real sr = center_point - 0.5*ilower;
 
         Real knots[deg_Bspine+1];
         // knots of the Bspline
@@ -92,7 +94,7 @@ namespace DG
                 }
 
             }
-            if (knots[position] == sl)
+            if (knots[position] >= sr)
             {
                 break_flag = 4;
                 bp_breaks[0] = sl;
@@ -154,9 +156,10 @@ namespace DG
 
 
     }
-    void Bspline_integral(Real * rlt, int  Np, Real center_point, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    void Bspline_integral(Real * rlt, int  Np, Real center_point, Real int_upper, Real int_lower, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {
         // Compute the integral (Bspline, DG_basis_function) for each basis function
+        // Integral_{lower, upper} Bspline( center_point - z/2)*Basis_m(z)dz for m = 0,1,2,..Poly degree
         //Output
         // rlt: array of Np x 1, integral for each basis function
 
@@ -165,7 +168,9 @@ namespace DG
         int  break_flag = 0;
         
         // Figure out the actual integral domain and type
-        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point);
+        //const Real int_upper = 1.0;
+        //const Real int_low = -1.0;
+        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point, int_upper, int_low);
 
         if (break_flag == 1)
         {
