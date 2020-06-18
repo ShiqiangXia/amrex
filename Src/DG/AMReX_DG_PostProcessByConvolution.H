@@ -170,7 +170,7 @@ namespace DG
         // Figure out the actual integral domain and type
         //const Real int_upper = 1.0;
         //const Real int_low = -1.0;
-        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point, int_upper, int_low);
+        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point, int_upper, int_lower);
 
         if (break_flag == 1)
         {
@@ -213,6 +213,8 @@ namespace DG
         const int Np = sp+1;
         const int Nr = 2*sp+1;
         const int NJ = 4*sp+1;
+        const Real iupper = 1.0;
+        const Real ilower = -1.0;
 
         AA.resize(Npoints*Np*Nr*NJ);
         Real center_point; 
@@ -225,7 +227,8 @@ namespace DG
                 {
                     center_point = points[nn]*0.5 - (rr-sp) - (jj - 2*sp);
                     Real rlt[Np];
-                    Bspline_integral(rlt, Np, center_point, quad_points, quad_weights);
+
+                    Bspline_integral(rlt, Np, center_point,iupper, ilower, quad_points, quad_weights);
                     
                     /*
                     if(nn==0 && rr==0 &&jj==5)
