@@ -1319,6 +1319,56 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
     }
 
 
+
+    void Convolution_Postprocessing_OneSideKernel(const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                                const MatrixFactory<N_PHI, N_DOM> & MatFactory)
+    {
+        // step 1: load and pre-compute necessary data for the kernel
+
+        // DG info
+        const int sp = MatFactory.space_p;
+        const int sNp_1D = sp+1;
+        const int sNp = MatFactory.space_Np;
+
+        const int sp_star = 2*sp + 1;
+
+        // 1D Quadrature points on the reference unithyperrectangle
+        // make sure sq >= sp_star
+        const int sq = iGeom.uHyperrect.q ;  
+
+        UnitHyperrectangle<1> uHyperrect(sp_star,sq) ; 
+        Gpu::ManagedVector<Real> quad_points = uHyperrect.dom_XI1q ;  // sq+1 points
+        Gpu::ManagedVector<Real> quad_weights = uHyperrect.dom_Wq ;  // sq+1 weights
+
+        // points of interests
+        Gpu::ManagedVector<Real> points = quad_points;
+        const int Npoints_1D = points.size();
+
+        // compute the convolution matrix
+        Gpu::ManagedVector<Real> Conv_matrix ;
+        get_convolution_matrix(Conv_matrix,points,sp,quad_points,quad_weights);
+
+        Gpu::ManagedVector<Real> Conv_matrix_Left ;
+        Gpu::ManagedVector<Real> Conv_matrix_Right ;
+        get_convolution_matrix_one_side_kernel(Conv_matrix_Right,Conv_matrix_Left,points,sp,quad_points,quad_weights)
+
+        // step 2: Convolve with the DG solution
+            // 1. go through all elements
+            // 2. for each element, find necessary neighbors
+            // 3. do the convolution
+            //    1) interior element: use symmetric kernel
+            //    2) boundary element / interface element: use one side kernel
+
+            
+
+
+
+
+
+
+
+
+    }
 // ####################################################################
 
 // ERROR EVALUATION ###############################################
