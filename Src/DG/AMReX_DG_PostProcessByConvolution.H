@@ -447,8 +447,8 @@ namespace DG
 
                     for (int rr = 0; rr < Nr; ++rr )
                     {
-                       matrix_r[ jj + mm*NJ + nn*NJ*Np ] += 0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
-                       matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                       matrix_r[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                       matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
 
                     }
                 }

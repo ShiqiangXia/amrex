@@ -1351,7 +1351,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         // compute one side kernel matrix
         Gpu::ManagedVector<Real> Conv_matrix_Left ;
         Gpu::ManagedVector<Real> Conv_matrix_Right ;
-        get_convolution_matrix_one_side_kernel(Conv_matrix_Right,Conv_matrix_Left,points,sp,quad_points,quad_weights)
+        get_convolution_matrix_one_side_kernel(Conv_matrix_Right,Conv_matrix_Left,points,sp,quad_points,quad_weights);
 
         // step 2: Convolve with the DG solution
             // 1. go through all elements
@@ -1367,25 +1367,21 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 #if (AMREX_SPACEDIM == 1)
         const int Npoints = Npoints_1D;
-        // const int Nj = Nj_1D;
+        
 #endif
 #if (AMREX_SPACEDIM == 2)
         const int Npoints = Npoints_1D * Npoints_1D;
-        // const int Nj = (Nj_1D)*(Nj_1D);
+        
 #endif
 #if (AMREX_SPACEDIM == 3)
         const int Npoints = Npoints_1D * Npoints_1D * Npoints_1D;
-        // const int Nj = (Nj_1D)*(Nj_1D)*(Nj_1D);
+        
 #endif
 
         // Multifab to store post-processed data
         X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
 
-        //X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, one_side_support); //MultiFab with 2k ghoast cells
-        // copy from the DG solution
-        // MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
-       // X_DG_temp.FillBoundary(iGeom.geom.periodicity());
-
+        
        // loop all boxes
        const Box & domain = iGeom.geom.Domain();
         for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
@@ -1398,11 +1394,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             ParallelFor(bx,N_U,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
             {
-                // loop all points in a cell (i,j,k)
+                
 
                 // check the neighbors of cell (i,j,k)
-                // set how many neighbor cells are avaiable
-               
+                // see how many neighbor cells are avaiable
                 int fi, fj, fk;
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
                     
@@ -1414,6 +1409,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                     GRID_FACE(i, j, k, b, fi, fj, fk);
 
+                    // XX: only works for rectangular domain?
                     if (b==0)
                     {
                         if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_flag[b] = false;
@@ -1447,44 +1443,48 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                  // determine to use symmetric kernel or one-side kernel
                  int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM],Nj[AMREX_SPACEDIM];
-                 Real * conv_matrix_1;
+                 const Real * conv_matrix_1;
 
                  if (kernel_flag[0] && kernel_flag[1])
                  {
+                     // use symmetric kernel (have enough neighbors on both sides)
                      j_low[0] = - symmetric_kernl_one_side_support;
                      j_up[0] = symmetric_kernl_one_side_support;
                      Nj[0] = Nj_1D;
-                     conv_matrix_1 = Conv_matrix_sym;
+                     conv_matrix_1 = Conv_matrix_sym.data();
 
                  }
                  else if (kernel_flag[0])
                  {
+                     // use left-side kernel (not enough neighbors on the right )
                      j_low[0] = -oneside_kernl_one_side_support;
                      j_up[0] = 0;
                      Nj[0] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_1 = Conv_matrix_Left;
+                     conv_matrix_1 = Conv_matrix_Left.data();
                  }
                  else if (kernel_flag[1])
                  {
+                     // use right-side kernel (not enough neigbors on the left)
                      j_low[0]= 0;
                      j_up[0] = oneside_kernl_one_side_support;
                      Nj[0] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_1 = Conv_matrix_Right
+                     conv_matrix_1 = Conv_matrix_Right.data();
                  }
                  else
                  {
+                     // not enough neighbors on both sides. This is not what we want, refine the mesh
                      Print()<<"ERROR: no enough elements to post-process in x directions! Refine the mesh"<<std::endl;
                  }
 
 
 #if (AMREX_SPACEDIM > 1)
-                Real * conv_matrix_2;
+                const Real * conv_matrix_2;
                 if (kernel_flag[2] && kernel_flag[3])
                  {
                      j_low[1] = - symmetric_kernl_one_side_support;
                      j_up[1] = symmetric_kernl_one_side_support;
                      Nj[1] = Nj_1D;
-                     conv_matrix_2 = Conv_matrix_sym;
+                     conv_matrix_2 = Conv_matrix_sym.data();
 
                  }
                  else if (kernel_flag[2])
@@ -1492,14 +1492,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[1] = -oneside_kernl_one_side_support;
                      j_up[1] = 0;
                      Nj[1] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_2 = Conv_matrix_Left;
+                     conv_matrix_2 = Conv_matrix_Left.data();
                  }
                  else if (kernel_flag[3])
                  {
                      j_low[1]= 0;
                      j_up[1] = oneside_kernl_one_side_support;
                      Nj[1] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_2 = Conv_matrix_Right
+                     conv_matrix_2 = Conv_matrix_Right.data();
                  }
                  else
                  {
@@ -1508,13 +1508,13 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 #endif
 #if (AMREX_SPACEDIM > 2)
-                Real * conv_matrix_3;
+                const Real * conv_matrix_3;
                 if (kernel_flag[4] && kernel_flag[5])
                  {
                      j_low[2] = - symmetric_kernl_one_side_support;
                      j_up[2] = symmetric_kernl_one_side_support;
                      Nj[2] = Nj_1D;
-                     conv_matrix_3 = Conv_matrix_sym;
+                     conv_matrix_3 = Conv_matrix_sym.data();
 
                  }
                  else if (kernel_flag[4])
@@ -1522,14 +1522,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[2] = -oneside_kernl_one_side_support;
                      j_up[2] = 0;
                      Nj[2] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_3 = Conv_matrix_Left;
+                     conv_matrix_3 = Conv_matrix_Left.data();
                  }
                  else if (kernel_flag[5])
                  {
                      j_low[2]= 0;
                      j_up[2] = oneside_kernl_one_side_support;
                      Nj[2] = oneside_kernl_one_side_support + 1;
-                     conv_matrix_3 = Conv_matrix_Right
+                     conv_matrix_3 = Conv_matrix_Right.data();
                  }
                  else
                  {
@@ -1537,7 +1537,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  }
 #endif
                 
-                
+                // loop all points in a cell (i,j,k)
                 for (int point_iter=0; point_iter < Npoints; ++point_iter)
                 {
                     for(int mm = 0; mm < sNp; ++mm)
