@@ -1345,9 +1345,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const int Npoints_1D = points.size();
 
         // compute the convolution matrix
-        Gpu::ManagedVector<Real> Conv_matrix ;
-        get_convolution_matrix(Conv_matrix,points,sp,quad_points,quad_weights);
+        Gpu::ManagedVector<Real> Conv_matrix_sym ;
+        get_convolution_matrix(Conv_matrix_sym,points,sp,quad_points,quad_weights);
 
+        // compute one side kernel matrix
         Gpu::ManagedVector<Real> Conv_matrix_Left ;
         Gpu::ManagedVector<Real> Conv_matrix_Right ;
         get_convolution_matrix_one_side_kernel(Conv_matrix_Right,Conv_matrix_Left,points,sp,quad_points,quad_weights)
@@ -1359,7 +1360,247 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             //    1) interior element: use symmetric kernel
             //    2) boundary element / interface element: use one side kernel
 
+        MultiFab X_DG_temp;
+        const int symmetric_kernl_one_side_support = 2*sp;  // 2k
+        const int oneside_kernl_one_side_support = 3*sp;   // 3k
+        const int Nj_1D = 4*sp+1 ;
+
+#if (AMREX_SPACEDIM == 1)
+        const int Npoints = Npoints_1D;
+        // const int Nj = Nj_1D;
+#endif
+#if (AMREX_SPACEDIM == 2)
+        const int Npoints = Npoints_1D * Npoints_1D;
+        // const int Nj = (Nj_1D)*(Nj_1D);
+#endif
+#if (AMREX_SPACEDIM == 3)
+        const int Npoints = Npoints_1D * Npoints_1D * Npoints_1D;
+        // const int Nj = (Nj_1D)*(Nj_1D)*(Nj_1D);
+#endif
+
+        // Multifab to store post-processed data
+        X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
+
+        //X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, one_side_support); //MultiFab with 2k ghoast cells
+        // copy from the DG solution
+        // MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
+       // X_DG_temp.FillBoundary(iGeom.geom.periodicity());
+
+       // loop all boxes
+       const Box & domain = iGeom.geom.Domain();
+        for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
+        {
+            const Box & bx = mfi.validbox();
+            Array4<Real const> const & X_fab = this->X_new.array(mfi);
+            Array4<Real> const & X_star_fab = X_star.array(mfi);
             
+            // loop all cells in a box
+            ParallelFor(bx,N_U,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
+            {
+                // loop all points in a cell (i,j,k)
+
+                // check the neighbors of cell (i,j,k)
+                // set how many neighbor cells are avaiable
+               
+                int fi, fj, fk;
+                int temp_i, temp_j, temp_k;
+                int nbr_i, nbr_j, nbr_k, nbr_b;
+                bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
+                    
+                for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
+                {
+                    kernel_flag[b] = true;
+
+                    const int dir = b/2;
+
+                    NBR_CELL(i, j, k, b, nbr_i, nbr_j, nbr_k, nbr_b);
+
+                    if (b==0)
+                    {
+                        if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_flag[b] = false;
+                    }
+                    else if (b == 1)
+                    {
+                        if ( (domain.bigEnd(dir)+1) - fi < symmetric_kernl_one_side_support  ) kernel_flag[b] = false;   
+                    }
+#if (AMREX_SPACEDIM > 1)
+                    else if (b==2)
+                    {
+                        if ( (fj - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                    }
+                    else if (b==3)
+                    {
+                        if ( (domain.bigEnd(dir)+1) - fj < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                    }
+#endif
+#if (AMREX_SPACEDIM > 2)
+                    else if (b==4)
+                    {
+                        if ( (fk - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                    }
+                    else
+                    {
+                        if ( (domain.bigEnd(dir)+1) - fk < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                    }
+                        
+#endif 
+                }
+
+                 // determine to use symmetric kernel or one-side kernel
+                 int j1_low, j1_up;
+                 Real * conv_matrix_1;
+                 if (kernel_flag[0] && kernel_flag[1])
+                 {
+                     j1_low = - symmetric_kernl_one_side_support;
+                     j1_up = symmetric_kernl_one_side_support;
+                     conv_matrix_1 = Conv_matrix_sym;
+
+                 }
+                 else if (kernel_flag[0])
+                 {
+                     j1_low = -oneside_kernl_one_side_support;
+                     j1_up = 0;
+                     conv_matrix_1 = Conv_matrix_Left;
+                 }
+                 else if (kernel_flag[1])
+                 {
+                     j1_low = 0;
+                     j1_up = oneside_kernl_one_side_support;
+                     conv_matrix_1 = Conv_matrix_Right
+                 }
+
+
+
+
+
+
+                for (int point_iter=0; point_iter < Npoints; ++point_iter)
+                {
+                    X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
+
+/*
+
+                        for(int ss = 0; ss < symmetric_kernl_one_side_support; ++ss)
+                        {
+                            NBR_CELL(temp_i, temp_j, temp_k, b, nbr_i, nbr_j, nbr_k, nbr_b);
+                            temp_i = nbr_i;
+                            temp_j = nbr_j;
+                            temp_k = nbr_k;
+                            GRID_FACE(temp_i, temp_j, temp_k, b, fi, fj, fk);
+
+                        if (dir == 0)
+                        {
+                            if (fi < domain.smallEnd(dir) || fi > domain.bigEnd(dir)+1)  
+                            {
+                                kernel_flag[b] = false;
+                                break;
+                            }
+                            
+                           
+                        }
+#if (AMREX_SPACEDIM > 1)
+                        else if (dir == 1)
+                        {
+                            if ( fj <  domain.smallEnd(dir) || fj > domain.bigEnd(dir)+1 ) 
+                            {
+                                kernel_flag[b] = false;
+                                break;
+                            }
+                        
+                        }
+#endif
+#if (AMREX_SPACEDIM > 2)
+                        else
+                        {
+                            if (fk < domain.smallEnd(dir) || fk >  domain.bigEnd(dir)+1) 
+                            {
+                                kernel_flag[b] = false;
+                                break;
+                            }
+                        
+                        }             
+
+#endif
+    
+                        }
+
+                        
+                        
+
+                    }
+
+*/
+
+                    // loop all neighbors of a cell
+                    for(int jj=0; jj < Nj; ++jj)
+                    { 
+                        // loop all basis
+                        for(int mm = 0; mm < sNp; ++mm)
+                        {
+                            int nn_dir[AMREX_SPACEDIM];                      
+                            int jj_dir[AMREX_SPACEDIM];
+                            int mm_dir[AMREX_SPACEDIM];
+                            int temp_i=0;
+                            int temp_j=0;
+                            int temp_k=0;
+
+                            AMREX_D_TERM
+                        (
+                            nn_dir[0] = point_iter%Npoints_1D;
+                            jj_dir[0] = jj%(Nj_1D);
+                            mm_dir[0] = mm%(sNp_1D);
+                            temp_i = i - one_side_support + jj_dir[0];,
+
+                            nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;
+                            jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;
+                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);
+                            temp_j = j - one_side_support + jj_dir[1];,
+
+                            nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
+                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ( Nj_1D * Nj_1D);
+                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                            temp_k = k - one_side_support + jj_dir[2];
+
+                        )
+                        
+                             Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                            // Real temp_var = 1.0;
+                            
+                            for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
+                            {
+                                temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + nn_dir[tt]*Nj_1D*(sNp_1D)];
+
+                            }
+                            X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+
+                        }
+                        
+                    }  
+                    
+                    
+
+                     // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<points[point_iter%Npoints_1D]<<",point_y: "<<points[ ( (point_iter - point_iter%Npoints_1D)/Npoints_1D )%Npoints_1D ] <<", "<<"X_star_fab: "<<X_star_fab(i,j,k, point_iter + ru * Npoints)<<std::endl;
+                    
+                }
+                
+
+                //Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",ru: "<<ru<<", "<<"DG: "<<X_fab_new(i,j,k,ru)<<std::endl;
+                //Print()<<"index temp_i: "<<temp_i<<",j: "<<temp_j<<",k: "<<temp_k<<",ru: "<<0<<", "<<"DG: "<<X_fab(temp_i,temp_j,temp_k,0)<<std::endl;
+
+            });
+            Gpu::synchronize();
+            
+
+        }
+
+
+
+
+
+
+
+
 
 
 
