@@ -1326,9 +1326,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         // step 1: load and pre-compute necessary data for the kernel
 
         // DG info
-        const int sp = MatFactory.space_p;
-        const int sNp_1D = sp+1;
-        const int sNp = MatFactory.space_Np;
+        const int sp = MatFactory.space_p; //k
+        const int sNp_1D = sp+1;  // k+1
+        const int sNp = MatFactory.space_Np;  // (k+1)^DIM
 
         const int sp_star = 2*sp + 1;
 
@@ -1404,8 +1404,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // set how many neighbor cells are avaiable
                
                 int fi, fj, fk;
-                int temp_i, temp_j, temp_k;
-                int nbr_i, nbr_j, nbr_k, nbr_b;
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
                     
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
@@ -1414,7 +1412,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                     const int dir = b/2;
 
-                    NBR_CELL(i, j, k, b, nbr_i, nbr_j, nbr_k, nbr_b);
+                    GRID_FACE(i, j, k, b, fi, fj, fk);
 
                     if (b==0)
                     {
@@ -1448,168 +1446,192 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 }
 
                  // determine to use symmetric kernel or one-side kernel
-                 int j1_low, j1_up;
+                 int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM],Nj[AMREX_SPACEDIM];
                  Real * conv_matrix_1;
+
                  if (kernel_flag[0] && kernel_flag[1])
                  {
-                     j1_low = - symmetric_kernl_one_side_support;
-                     j1_up = symmetric_kernl_one_side_support;
+                     j_low[0] = - symmetric_kernl_one_side_support;
+                     j_up[0] = symmetric_kernl_one_side_support;
+                     Nj[0] = Nj_1D;
                      conv_matrix_1 = Conv_matrix_sym;
 
                  }
                  else if (kernel_flag[0])
                  {
-                     j1_low = -oneside_kernl_one_side_support;
-                     j1_up = 0;
+                     j_low[0] = -oneside_kernl_one_side_support;
+                     j_up[0] = 0;
+                     Nj[0] = oneside_kernl_one_side_support + 1;
                      conv_matrix_1 = Conv_matrix_Left;
                  }
                  else if (kernel_flag[1])
                  {
-                     j1_low = 0;
-                     j1_up = oneside_kernl_one_side_support;
+                     j_low[0]= 0;
+                     j_up[0] = oneside_kernl_one_side_support;
+                     Nj[0] = oneside_kernl_one_side_support + 1;
                      conv_matrix_1 = Conv_matrix_Right
+                 }
+                 else
+                 {
+                     Print()<<"ERROR: no enough elements to post-process in x directions! Refine the mesh"<<std::endl;
                  }
 
 
-
-
-
-
-                for (int point_iter=0; point_iter < Npoints; ++point_iter)
-                {
-                    X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
-
-/*
-
-                        for(int ss = 0; ss < symmetric_kernl_one_side_support; ++ss)
-                        {
-                            NBR_CELL(temp_i, temp_j, temp_k, b, nbr_i, nbr_j, nbr_k, nbr_b);
-                            temp_i = nbr_i;
-                            temp_j = nbr_j;
-                            temp_k = nbr_k;
-                            GRID_FACE(temp_i, temp_j, temp_k, b, fi, fj, fk);
-
-                        if (dir == 0)
-                        {
-                            if (fi < domain.smallEnd(dir) || fi > domain.bigEnd(dir)+1)  
-                            {
-                                kernel_flag[b] = false;
-                                break;
-                            }
-                            
-                           
-                        }
 #if (AMREX_SPACEDIM > 1)
-                        else if (dir == 1)
-                        {
-                            if ( fj <  domain.smallEnd(dir) || fj > domain.bigEnd(dir)+1 ) 
-                            {
-                                kernel_flag[b] = false;
-                                break;
-                            }
-                        
-                        }
+                Real * conv_matrix_2;
+                if (kernel_flag[2] && kernel_flag[3])
+                 {
+                     j_low[1] = - symmetric_kernl_one_side_support;
+                     j_up[1] = symmetric_kernl_one_side_support;
+                     Nj[1] = Nj_1D;
+                     conv_matrix_2 = Conv_matrix_sym;
+
+                 }
+                 else if (kernel_flag[2])
+                 {
+                     j_low[1] = -oneside_kernl_one_side_support;
+                     j_up[1] = 0;
+                     Nj[1] = oneside_kernl_one_side_support + 1;
+                     conv_matrix_2 = Conv_matrix_Left;
+                 }
+                 else if (kernel_flag[3])
+                 {
+                     j_low[1]= 0;
+                     j_up[1] = oneside_kernl_one_side_support;
+                     Nj[1] = oneside_kernl_one_side_support + 1;
+                     conv_matrix_2 = Conv_matrix_Right
+                 }
+                 else
+                 {
+                     Print()<<"ERROR: no enough elements to post-process in y directions! Refine the mesh"<<std::endl;
+                 }
+
 #endif
 #if (AMREX_SPACEDIM > 2)
-                        else
-                        {
-                            if (fk < domain.smallEnd(dir) || fk >  domain.bigEnd(dir)+1) 
-                            {
-                                kernel_flag[b] = false;
-                                break;
-                            }
-                        
-                        }             
+                Real * conv_matrix_3;
+                if (kernel_flag[4] && kernel_flag[5])
+                 {
+                     j_low[2] = - symmetric_kernl_one_side_support;
+                     j_up[2] = symmetric_kernl_one_side_support;
+                     Nj[2] = Nj_1D;
+                     conv_matrix_3 = Conv_matrix_sym;
 
+                 }
+                 else if (kernel_flag[4])
+                 {
+                     j_low[2] = -oneside_kernl_one_side_support;
+                     j_up[2] = 0;
+                     Nj[2] = oneside_kernl_one_side_support + 1;
+                     conv_matrix_3 = Conv_matrix_Left;
+                 }
+                 else if (kernel_flag[5])
+                 {
+                     j_low[2]= 0;
+                     j_up[2] = oneside_kernl_one_side_support;
+                     Nj[2] = oneside_kernl_one_side_support + 1;
+                     conv_matrix_3 = Conv_matrix_Right
+                 }
+                 else
+                 {
+                     Print()<<"ERROR: no enough elements to post-process in z directions! Refine the mesh"<<std::endl;
+                 }
 #endif
-    
-                        }
-
-                        
-                        
-
-                    }
-
-*/
-
-                    // loop all neighbors of a cell
-                    for(int jj=0; jj < Nj; ++jj)
-                    { 
-                        // loop all basis
-                        for(int mm = 0; mm < sNp; ++mm)
+                
+                
+                for (int point_iter=0; point_iter < Npoints; ++point_iter)
+                {
+                    for(int mm = 0; mm < sNp; ++mm)
+                    {
+                        int nn_dir[AMREX_SPACEDIM];                     
+                        int mm_dir[AMREX_SPACEDIM];
+                        int temp_i=0;
+                        int temp_j=0;
+                        int temp_k=0;
+#if (AMREX_SPACEDIM == 1)
+                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                         {
-                            int nn_dir[AMREX_SPACEDIM];                      
-                            int jj_dir[AMREX_SPACEDIM];
-                            int mm_dir[AMREX_SPACEDIM];
-                            int temp_i=0;
-                            int temp_j=0;
-                            int temp_k=0;
-
-                            AMREX_D_TERM
-                        (
                             nn_dir[0] = point_iter%Npoints_1D;
-                            jj_dir[0] = jj%(Nj_1D);
                             mm_dir[0] = mm%(sNp_1D);
-                            temp_i = i - one_side_support + jj_dir[0];,
+                            temp_i = i + j1;
 
-                            nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;
-                            jj_dir[1] = ( (jj - jj_dir[0])/Nj_1D )%Nj_1D;
-                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);
-                            temp_j = j - one_side_support + jj_dir[1];,
+                            Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                            temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
 
-                            nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
-                            jj_dir[2] = (jj - jj_dir[0] - jj_dir[1]*(Nj_1D)) / ( Nj_1D * Nj_1D);
-                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
-                            temp_k = k - one_side_support + jj_dir[2];
+                            X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+                             
+                            //temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + nn_dir[tt]*Nj_1D*(sNp_1D)];
 
-                        )
-                        
-                             Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                            // Real temp_var = 1.0;
                             
-                            for (int tt = 0 ; tt < AMREX_SPACEDIM; ++tt)
+
+                        }
+                    
+#endif
+#if (AMREX_SPACEDIM == 2)
+                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+                        {
+                            for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
                             {
-                                temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + nn_dir[tt]*Nj_1D*(sNp_1D)];
+                                nn_dir[0] = point_iter%Npoints_1D;
+                                mm_dir[0] = mm%(sNp_1D);
+                                temp_i = i + j1;
+
+                                nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;
+                                mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);
+                                temp_j = j  + j2;
+
+                                Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                                temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
+                                temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
+
+                                X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
 
                             }
-                            X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
-
+                            
                         }
-                        
-                    }  
-                    
-                    
+#endif
+#if (AMREX_SPACEDIM == 3)
+                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+                        {
+                            for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
+                            {
+                                for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
+                                {
+                                    nn_dir[0] = point_iter%Npoints_1D;
+                                    mm_dir[0] = mm%(sNp_1D);
+                                    temp_i = i + j1;
 
-                     // Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",point_x: "<<points[point_iter%Npoints_1D]<<",point_y: "<<points[ ( (point_iter - point_iter%Npoints_1D)/Npoints_1D )%Npoints_1D ] <<", "<<"X_star_fab: "<<X_star_fab(i,j,k, point_iter + ru * Npoints)<<std::endl;
-                    
-                }
-                
+                                    nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;
+                                    mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);
+                                    temp_j = j  + j2;
 
-                //Print()<<"index i: "<<i<<",j: "<<j<<",k: "<<k<<",ru: "<<ru<<", "<<"DG: "<<X_fab_new(i,j,k,ru)<<std::endl;
-                //Print()<<"index temp_i: "<<temp_i<<",j: "<<temp_j<<",k: "<<temp_k<<",ru: "<<0<<", "<<"DG: "<<X_fab(temp_i,temp_j,temp_k,0)<<std::endl;
+                                    nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
+                                    mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                                    temp_k = k + j3;
 
-            });
+                                    Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                                    temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
+                                    temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
+                                    temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
+
+                                    X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+
+                                }
+                                
+                            }
+                            
+                        }
+#endif
+
+                    } // endfor m
+
+                }// endfor point_iter
+
+            }); //end paranell for
             Gpu::synchronize();
-            
+        }//endfor MFIter
 
-        }
+    } // end func  Convolution_Postprocessing_OneSideKernel
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    }
 // ####################################################################
 
 // ERROR EVALUATION ###############################################
