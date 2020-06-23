@@ -391,6 +391,7 @@ namespace DG
                     {
                         AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt_A[mm];
                         BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt_B[mm];
+                        
 
                     }
                 }
@@ -444,19 +445,16 @@ namespace DG
                 for (int jj = 0; jj <  NJ; ++jj)
                 {
                     matrix_r[jj+mm*NJ + nn*NJ*Np] = 0.0;
+                    matrix_l[ jj + mm*NJ + nn*NJ*Np ] = 0.0;
 
                     for (int rr = 0; rr < Nr; ++rr )
                     {
                        matrix_r[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
                        matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                       
 
                     }
-                    if(abs(matrix_r[ jj + mm*NJ + nn*NJ*Np ])>100 || abs(matrix_l[ jj + mm*NJ + nn*NJ*Np ]>100))
-                    {
-                        Print()<<"matrix_r: "<<matrix_r[ jj + mm*NJ + nn*NJ*Np ] << "matrix_l: "<< matrix_l[ jj + mm*NJ + nn*NJ*Np ]<<std::endl;
-                        Print()<<"nn "<<nn <<"  mm "<< mm <<" jj "<< jj<<std::endl;
-
-                    }
+                    
                     
                     
                 }

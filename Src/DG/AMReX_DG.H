@@ -1452,7 +1452,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                  // determine to use symmetric kernel or one-side kernel
                  int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM], Nj[AMREX_SPACEDIM];
-                 //const Real * conv_matrix_1;
+                 const Real * conv_matrix_1;
                  //Gpu::ManagedVector<Real> conv_matrix_1;
 
                  if (kernel_flag[0] && kernel_flag[1])
@@ -1462,7 +1462,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[0] = symmetric_kernl_one_side_support;
                      Nj[0] = Nj_1D;
                      kernel_indi[0] = 0;
-                     //conv_matrix_1 = Conv_matrix_sym.data();
+                     conv_matrix_1 = Conv_matrix_sym.data();
                      //conv_matrix_1 = Conv_matrix_sym;
 
                  }
@@ -1473,7 +1473,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[0] = 0;
                      Nj[0] = oneside_kernl_one_side_support + 1;
                      kernel_indi[0]=-1;
-                     //conv_matrix_1 = Conv_matrix_Left.data();
+                     conv_matrix_1 = Conv_matrix_Left.data();
                      //conv_matrix_1 = Conv_matrix_Left;
                  }
                  else if (kernel_flag[1])
@@ -1483,7 +1483,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[0] = oneside_kernl_one_side_support;
                      Nj[0] = oneside_kernl_one_side_support + 1;
                      kernel_indi[0] = 1;
-                     //conv_matrix_1 = Conv_matrix_Right.data();
+                     conv_matrix_1 = Conv_matrix_Right.data();
                      //conv_matrix_1 = Conv_matrix_Right;
                  }
                  else
@@ -1494,7 +1494,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 
 #if (AMREX_SPACEDIM > 1)
-                // const Real * conv_matrix_2;
+                const Real * conv_matrix_2;
                 //Gpu::ManagedVector<Real> conv_matrix_2;
                 if (kernel_flag[2] && kernel_flag[3])
                  {
@@ -1502,7 +1502,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = symmetric_kernl_one_side_support;
                      Nj[1] = Nj_1D;
                      kernel_indi[1] = 0;
-                     //conv_matrix_2 = Conv_matrix_sym.data();
+                     conv_matrix_2 = Conv_matrix_sym.data();
                      //conv_matrix_2 = Conv_matrix_sym;
 
                  }
@@ -1512,7 +1512,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = 0;
                      Nj[1] = oneside_kernl_one_side_support + 1;
                      kernel_indi[1] = -1;
-                     //conv_matrix_2 = Conv_matrix_Left.data();
+                     conv_matrix_2 = Conv_matrix_Left.data();
                      //conv_matrix_2 = Conv_matrix_Left;
                  }
                  else if (kernel_flag[3])
@@ -1521,7 +1521,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = oneside_kernl_one_side_support;
                      Nj[1] = oneside_kernl_one_side_support + 1;
                      kernel_indi[1]=1;
-                     //conv_matrix_2 = Conv_matrix_Right.data();
+                     conv_matrix_2 = Conv_matrix_Right.data();
                      //conv_matrix_2 = Conv_matrix_Right;
                  }
                  else
@@ -1644,6 +1644,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                     Print()<<"temp_var: "<<temp_var<<std::endl;
                                 }
                                 */
+                               /*
                                switch (kernel_indi[0])
                                {
                                case 0:
@@ -1666,8 +1667,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                     
                                    break;
                                }
+                               */
 
-                                // temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
+                                 temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
                                 /*
 
                                 if(i==14 && j==0 && abs(temp_var)>100)
@@ -1678,6 +1680,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                     Print()<<"temp_var: "<<temp_var<<std::endl;
                                 }
                                 */
+                               /*
 
                                 switch (kernel_indi[1])
                                {
@@ -1692,10 +1695,11 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                     temp_var *= Conv_matrix_Left[j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
                                    break;
                                }
+                               */
 
 
 
-                                //temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
+                                temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
                                 /*
                                 if(i==14 && j==0)
                                 {
