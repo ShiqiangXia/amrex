@@ -1406,7 +1406,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // see how many neighbor cells are avaiable
                 int fi, fj, fk;
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
-                int kernel_indi[AMREX_SPACEDIM];
+                
                     
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
                 {
@@ -1453,7 +1453,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  // determine to use symmetric kernel or one-side kernel
                  int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM], Nj[AMREX_SPACEDIM];
                  const Real * conv_matrix_1;
-                 //Gpu::ManagedVector<Real> conv_matrix_1;
+                
 
                  if (kernel_flag[0] && kernel_flag[1])
                  {
@@ -1461,7 +1461,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[0] = - symmetric_kernl_one_side_support;
                      j_up[0] = symmetric_kernl_one_side_support;
                      Nj[0] = Nj_1D;
-                     kernel_indi[0] = 0;
+                     
                      conv_matrix_1 = Conv_matrix_sym.data();
                      //conv_matrix_1 = Conv_matrix_sym;
 
@@ -1472,9 +1472,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[0] = -oneside_kernl_one_side_support;
                      j_up[0] = 0;
                      Nj[0] = oneside_kernl_one_side_support + 1;
-                     kernel_indi[0]=-1;
+                     
                      conv_matrix_1 = Conv_matrix_Left.data();
-                     //conv_matrix_1 = Conv_matrix_Left;
+                     
                  }
                  else if (kernel_flag[1])
                  {
@@ -1482,9 +1482,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[0]= 0;
                      j_up[0] = oneside_kernl_one_side_support;
                      Nj[0] = oneside_kernl_one_side_support + 1;
-                     kernel_indi[0] = 1;
+                     
                      conv_matrix_1 = Conv_matrix_Right.data();
-                     //conv_matrix_1 = Conv_matrix_Right;
+                     
                  }
                  else
                  {
@@ -1495,15 +1495,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 #if (AMREX_SPACEDIM > 1)
                 const Real * conv_matrix_2;
-                //Gpu::ManagedVector<Real> conv_matrix_2;
+                
                 if (kernel_flag[2] && kernel_flag[3])
                  {
                      j_low[1] = - symmetric_kernl_one_side_support;
                      j_up[1] = symmetric_kernl_one_side_support;
                      Nj[1] = Nj_1D;
-                     kernel_indi[1] = 0;
+                     
                      conv_matrix_2 = Conv_matrix_sym.data();
-                     //conv_matrix_2 = Conv_matrix_sym;
+                     
 
                  }
                  else if (kernel_flag[2])
@@ -1511,18 +1511,18 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_low[1] = -oneside_kernl_one_side_support;
                      j_up[1] = 0;
                      Nj[1] = oneside_kernl_one_side_support + 1;
-                     kernel_indi[1] = -1;
+                     
                      conv_matrix_2 = Conv_matrix_Left.data();
-                     //conv_matrix_2 = Conv_matrix_Left;
+                     
                  }
                  else if (kernel_flag[3])
                  {
                      j_low[1]= 0;
                      j_up[1] = oneside_kernl_one_side_support;
                      Nj[1] = oneside_kernl_one_side_support + 1;
-                     kernel_indi[1]=1;
+                     
                      conv_matrix_2 = Conv_matrix_Right.data();
-                     //conv_matrix_2 = Conv_matrix_Right;
+                     
                  }
                  else
                  {
@@ -1606,9 +1606,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                             X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
                              
-                            //temp_var *= Conv_matrix[jj_dir[tt]+mm_dir[tt]*Nj_1D + nn_dir[tt]*Nj_1D*(sNp_1D)];
-
-                            
 
                         }
                     
@@ -1621,101 +1618,21 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 int temp_i=0;
                                 int temp_j=0;
                                 int temp_k=0;
-
                                 
                                 temp_i = i + j1;
-                                temp_j = j  + j2;
-                                /*
+                                temp_j = j + j2;
 
-                                if(i==14 && j==0)
-                                {
-                                     Print()<<"\n check~~~\n"<<std::endl;
-                                     
-                                     Print()<<"j1: "<< j1<<" j2: "<<j2<<std::endl;
-                                     
-                                     
-                                }
-                                */
 
                                 Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                                /*
-                                if(i==14 && j==0)
-                                {
-                                    Print()<<"temp_var: "<<temp_var<<std::endl;
-                                }
-                                */
-                               /*
-                               switch (kernel_indi[0])
-                               {
-                               case 0:
-                                   temp_var *= Conv_matrix_sym[j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-                                   break;
-                               case 1:
-                                    temp_var *= Conv_matrix_Right[j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-                                    if (abs(temp_var)>100)
-                                    {
-                                        Print()<<"mm_dir[0]: "<<mm_dir[0]<<" Nj[0]"<<Nj[0]<<" nn_dir[0]"<<nn_dir[0]<<" sNp_1D"<<sNp_1D <<std::endl;
-                                        Print()<<"index total "<<j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)<<std::endl;
-                                        Print()<<"Conv_matrix_Right: "<<Conv_matrix_Right[j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)]<<std::endl;
-                                    }
-                                   break;
-                               
-                               case -1:
-                                    temp_var *= Conv_matrix_Left[j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-                                    
-                    
-                                    
-                                   break;
-                               }
-                               */
+                                
 
-                                 temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-                                /*
-
-                                if(i==14 && j==0 && abs(temp_var)>100)
-                                {
-                                    Print()<<"mm_dir[0]: "<<mm_dir[0]<<" Nj[0]"<<Nj[0]<<" nn_dir[0]"<<nn_dir[0]<<" sNp_1D"<<sNp_1D <<std::endl;
-                                    Print()<<"index total "<<j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)<<std::endl;
-                                   Print()<<"kernel_indi[0]: "<<kernel_indi[0]<<std::endl;
-                                    Print()<<"temp_var: "<<temp_var<<std::endl;
-                                }
-                                */
-                               /*
-
-                                switch (kernel_indi[1])
-                               {
-                               case 0:
-                                   temp_var *= Conv_matrix_sym[j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                   break;
-                               case 1:
-                                    temp_var *= Conv_matrix_Right[j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                   break;
-                               
-                               case -1:
-                                    temp_var *= Conv_matrix_Left[j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                   break;
-                               }
-                               */
-
-
+                                temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
 
                                 temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                /*
-                                if(i==14 && j==0)
-                                {
-                                    Print()<<"conv_matrix_2: "<<conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)]<<std::endl;
-                                    Print()<<"temp_var: "<<temp_var<<std::endl;
-                                }
-                                */
+                                
 
                                 X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
 
-                                /*
-                                if(i==14 && j==0)
-                                {
-                                    Print()<<"X_star_fab: "<< X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
-                                }
-                                */
                                 
                                
 
@@ -1754,33 +1671,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                             
                         }
 #endif
-                     
 
-                    } // endfor m
-                    /*
-                    if (X_star_fab(i, j, k, point_iter + ru * Npoints) > 100)
-                    {
-                                    Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
-                    
-                                    Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
-                                    Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
-                                    Print()<<"point: "<< point_iter<<"   Npoint: "<<Npoints<<std::endl;
-                                    Print()<<"X_star_fab: "<<X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
-                                    break;
-                    }
-                    */
-                    /*
-                    //if (point_iter == 0 && j == 15)
-                    {
-                    Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
-                    
-                    //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
-                    //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
-                    Print()<<"point: "<< point_iter<<"   Npoint: "<<Npoints<<std::endl;
-                    Print()<<"X_star_fab: "<<X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
-                    }
-                    */
-                    
+                    } // endfor m    
 
                 }// endfor point_iter
 
