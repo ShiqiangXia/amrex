@@ -1556,12 +1556,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     {
                         int nn_dir[AMREX_SPACEDIM];                     
                         int mm_dir[AMREX_SPACEDIM];
-                        int temp_i=0;
-                        int temp_j=0;
-                        int temp_k=0;
+                        
 #if (AMREX_SPACEDIM == 1)
                         for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                         {
+                            int temp_i=0;
+                            int temp_j=0;
+                            int temp_k=0;
+
                             nn_dir[0] = point_iter%Npoints_1D;
                             mm_dir[0] = mm%(sNp_1D);
                             temp_i = i + j1;
@@ -1583,6 +1585,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         {
                             for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
                             {
+                                int temp_i=0;
+                                int temp_j=0;
+                                int temp_k=0;
+
                                 nn_dir[0] = point_iter%Npoints_1D;
                                 mm_dir[0] = mm%(sNp_1D);
                                 temp_i = i + j1;
@@ -1610,6 +1616,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                             {
                                 for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
                                 {
+                                    int temp_i=0;
+                                    int temp_j=0;
+                                    int temp_k=0;
+                                    
                                     nn_dir[0] = point_iter%Npoints_1D;
                                     mm_dir[0] = mm%(sNp_1D);
                                     temp_i = i + j1;
@@ -1642,8 +1652,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     {
                                     Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
                     
-                                    //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
-                                    //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
+                                    Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
+                                    Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
                                     Print()<<"point: "<< point_iter<<"   Npoint: "<<Npoints<<std::endl;
                                     Print()<<"X_star_fab: "<<X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
                     }
