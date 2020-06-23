@@ -1380,6 +1380,11 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
         // Multifab to store post-processed data
         X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
+        X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, oneside_kernl_one_side_support); //MultiFab with 2k ghoast cells
+
+        // copy from the DG solution
+        MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
+        X_DG_temp.FillBoundary(iGeom.geom.periodicity());
 
         
        // loop all boxes
@@ -1387,7 +1392,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         for (MFIter mfi(X_star); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
-            Array4<Real const> const & X_fab = this->X_new.array(mfi);
+            Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
             Array4<Real> const & X_star_fab = X_star.array(mfi);
             
             // loop all cells in a box
@@ -1408,6 +1413,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     const int dir = b/2;
 
                     GRID_FACE(i, j, k, b, fi, fj, fk);
+                    // Print()<<"dir: "<< dir<<" smallend: "<< domain.smallEnd(dir)<<" bigend: "<<domain.bigEnd(dir)<<std::endl;
 
                     // XX: only works for rectangular domain?
                     if (b==0)
@@ -1440,6 +1446,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         
 #endif 
                 }
+                
 
                  // determine to use symmetric kernel or one-side kernel
                  int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM],Nj[AMREX_SPACEDIM];
@@ -1536,10 +1543,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      Print()<<"ERROR: no enough elements to post-process in z directions! Refine the mesh"<<std::endl;
                  }
 #endif
-                
+                //Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
+                //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
+                //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
+
                 // loop all points in a cell (i,j,k)
                 for (int point_iter=0; point_iter < Npoints; ++point_iter)
                 {
+                    X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
+
                     for(int mm = 0; mm < sNp; ++mm)
                     {
                         int nn_dir[AMREX_SPACEDIM];                     
@@ -1584,6 +1596,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
 
                                 X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+                                
+                               
 
                             }
                             
@@ -1621,8 +1635,30 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                             
                         }
 #endif
+                     
 
                     } // endfor m
+                    if (X_star_fab(i, j, k, point_iter + ru * Npoints) > 100)
+                    {
+                                    Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
+                    
+                                    //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
+                                    //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
+                                    Print()<<"point: "<< point_iter<<"   Npoint: "<<Npoints<<std::endl;
+                                    Print()<<"X_star_fab: "<<X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
+                    }
+                    /*
+                    //if (point_iter == 0 && j == 15)
+                    {
+                    Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
+                    
+                    //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
+                    //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
+                    Print()<<"point: "<< point_iter<<"   Npoint: "<<Npoints<<std::endl;
+                    Print()<<"X_star_fab: "<<X_star_fab(i, j, k, point_iter + ru * Npoints)<<std::endl;
+                    }
+                    */
+                    
 
                 }// endfor point_iter
 
@@ -1689,7 +1725,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // INITIALIZATION
                 err_fab(i,j,k,0) = 0.0;
                 err_fab(i,j,k,1) = 0.0;
-                // Print()<<X_fab(i,j,k,0)<<std::endl;
+                /*
+                Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
+                Print()<<"X_fab: "<<X_fab(i,j,k,0)<<std::endl;
+                */
 
                 // LOCAL PARAMETERS
                 const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};

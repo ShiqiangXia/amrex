@@ -421,7 +421,8 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
     {
         // post-process the dG solution by convolution filtering
         
-        dG.Convolution_Postprocessing(iGeom,MatFactory);
+          //dG.Convolution_Postprocessing(iGeom,MatFactory);
+        dG.Convolution_Postprocessing_OneSideKernel(iGeom,MatFactory);
 
         amrex::Real err2;
         amrex::Print()<<"TEST~~~~~"<<std::endl;
