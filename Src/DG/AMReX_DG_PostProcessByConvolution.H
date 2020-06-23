@@ -451,8 +451,14 @@ namespace DG
                        matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
 
                     }
-                    Print()<<"matrix_r: "<<matrix_r[ jj + mm*NJ + nn*NJ*Np ] << "matrix_l: "<< matrix_l[ jj + mm*NJ + nn*NJ*Np ]<<std::endl;
-                    Print()<<"nn "<<nn <<"  mm "<< mm <<" jj "<< jj<<std::endl;
+                    if(abs(matrix_r[ jj + mm*NJ + nn*NJ*Np ])>100 || abs(matrix_l[ jj + mm*NJ + nn*NJ*Np ]>100))
+                    {
+                        Print()<<"matrix_r: "<<matrix_r[ jj + mm*NJ + nn*NJ*Np ] << "matrix_l: "<< matrix_l[ jj + mm*NJ + nn*NJ*Np ]<<std::endl;
+                        Print()<<"nn "<<nn <<"  mm "<< mm <<" jj "<< jj<<std::endl;
+
+                    }
+                    
+                    
                 }
             }
         }
