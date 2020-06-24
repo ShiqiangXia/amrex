@@ -1827,7 +1827,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         err_fab(i,j,k,1) += integrand*w;
                     }
                 }
-                Print()<<"i: "<<i<<" j: "<<j<<" k: "<<k<<"(u-uh)^2: "<<err_fab(i,j,k,1)<<std::endl;
+                //Print()<<"i: "<<i<<" j: "<<j<<" k: "<<k<<"(u-uh)^2: "<<err_fab(i,j,k,1)<<std::endl;
             });
             Gpu::synchronize();
         }

@@ -290,23 +290,6 @@ namespace DG
 
         // setp 2. compute A_{n,m,r,j}
         
-        /*
-
-        for (int ii=0; ii < Nr; ++ii)
-        {
-            Print()<<"cr:  "<<cr[ii]<<std::endl;
-        }
-
-        Print()<<"Npoints "<<Npoints<<std::endl;
-        Print()<<"Np "<<Np<<std::endl;
-        Print()<<"Nr "<<Nr<<std::endl;
-        Print()<<"NJ "<<NJ<<std::endl;
-
-        for (int ii=0; ii < Npoints; ++ii)
-        {
-            Print()<<points[ii]<<"  "<<quad_points[ii]<< "  "<<quad_weights[ii]<<std::endl;
-        }
-        */
 
         Gpu::ManagedVector<Real> AA;
 
@@ -449,7 +432,11 @@ namespace DG
                     for (int rr = 0; rr < Nr; ++rr )
                     {
                        matrix_r[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
-                       matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * BB[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+
+                        //  notice we need to switch the order of BB matrix
+                        // because BB is computed in order 0, -1, -2, .. -3k
+                        // however all the other coefficients are listed in increasing order, namely, -3k, ...,-2,-1,0
+                       matrix_l[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * BB[ NJ-1-jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
 
                        
                        
