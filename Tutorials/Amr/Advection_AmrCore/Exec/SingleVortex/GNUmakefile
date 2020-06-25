@@ -3,7 +3,7 @@ AMREX_HOME ?= ../../../../..
 PRECISION  = DOUBLE
 PROFILE    = FALSE
 
-DEBUG      = TRUE
+#DEBUG      = TRUE
 DEBUG      = FALSE
 
 DIM        = 2

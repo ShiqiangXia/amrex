@@ -1,30 +1,12 @@
- 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.DEBUG.ex) (AMReX_BLBackTrace.cpp:163)
+ 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:163)
 
- 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.DEBUG.ex) (AMReX_BLBackTrace.cpp:71)
+ 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:71)
 
- 2: amrex::ParallelDescriptor::Abort(int, bool) (in main2d.gnu.DEBUG.ex) (AMReX_ParallelDescriptor.cpp:1745)
+ 2: amrex::ParmParse::getarr(char const*, std::vector<int, std::allocator<int> >&, int, int) const (in main2d.gnu.ex) (AMReX_ParmParse.cpp:1239)
 
- 3: amrex::detail::Assert_host_doit(char const*, char const*, int, char const*) (in main2d.gnu.DEBUG.ex) (AMReX.cpp:251)
+ 3: main_main() (in main2d.gnu.ex) (main.cpp:188)
 
- 4: amrex::Assert(char const*, char const*, int, char const*) (in main2d.gnu.DEBUG.ex) (AMReX.H:149)
+ 4: main (in main2d.gnu.ex) (main.cpp:477)
 
- 5: amrex::FabArrayBase::getTileArray(amrex::IntVect const&) const (in main2d.gnu.DEBUG.ex) (AMReX_FabArrayBase.cpp:1437)
-
- 6: amrex::MFIter::Initialize() (in main2d.gnu.DEBUG.ex) (AMReX_MFIter.cpp:261)
-
- 7: amrex::MFIter::MFIter(amrex::FabArrayBase const&, bool) (in main2d.gnu.DEBUG.ex) (AMReX_MFIter.cpp:44)
-
- 8: void amrex::Copy<amrex::FArrayBox, void>(amrex::FabArray<amrex::FArrayBox>&, amrex::FabArray<amrex::FArrayBox> const&, int, int, int, amrex::IntVect const&) (in main2d.gnu.DEBUG.ex) (AMReX_FabArrayUtility.H:1481)
-
- 9: amrex::MultiFab::Copy(amrex::MultiFab&, amrex::MultiFab const&, int, int, int, int) (in main2d.gnu.DEBUG.ex) (AMReX_MultiFab.cpp:143)
-
-10: void amrex::DG::RungeKutta<1, 1, 1>::TakeTimeStep_Hyperbolic<LINADV>(int const&, double const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, amrex::MultiFab const&, amrex::MultiFab&, LINADV const&) (in main2d.gnu.DEBUG.ex) (AMReX_DG_RK.H:130)
-
-11: void amrex::DG::DG<1, 1, 1>::TakeTimeStep_Hyperbolic<LINADV>(double const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, LINADV const&) (in main2d.gnu.DEBUG.ex) (AMReX_DG.H:499)
-
-12: main_main() (in main2d.gnu.DEBUG.ex) (main.cpp:390)
-
-13: main (in main2d.gnu.DEBUG.ex) (main.cpp:475)
-
-14: start (in libdyld.dylib) + 1
+ 5: start (in libdyld.dylib) + 1
 
