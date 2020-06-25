@@ -65,7 +65,7 @@ public:
     AMREX_GPU_HOST_DEVICE
     amrex::Real F_U0(const int & u, const amrex::Real * x) const
     {
-        const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(0.5, 0.75, 0.5)};
+        const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(0.5, 0.5, 0.5)};
 #if (AMREX_SPACEDIM == 1)
         //amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0]));
         amrex::Real r2 = std::sin(2*M_PI*x[0]);
