@@ -65,22 +65,22 @@ public:
     AMREX_GPU_HOST_DEVICE
     amrex::Real F_U0(const int & u, const amrex::Real * x) const
     {
-        const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(0.5, 0.75, 0.5)};
+        const amrex::Real xc[AMREX_SPACEDIM] = {AMREX_D_DECL(-0.5, 0.75, 0.5)};
 #if (AMREX_SPACEDIM == 1)
         //amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0]));
         amrex::Real r2 = std::sin(2*M_PI*x[0]);
 #endif
 #if (AMREX_SPACEDIM == 2)
-         //amrex::Real r2 = 100*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
+         amrex::Real r2 = 100*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
         //amrex::Real r2 = x[0];
-          amrex::Real r2 = std::sin(2*M_PI*x[0]) + std::sin(2*M_PI*x[1]) ;
+        //amrex::Real r2 = std::sin(2*M_PI*x[0]) + std::sin(2*M_PI*x[1]) ;
 #endif
 #if (AMREX_SPACEDIM == 3)
         // amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1])+(x[2]-xc[2])*(x[2]-xc[2]));
         amrex::Real r2 = std::sin(2*M_PI*x[0]) * std::sin(2*M_PI*x[1])*std::sin(2*M_PI*x[2]) ;
 #endif
-           //amrex::Real phi0 = 1.0+std::exp(-r2);
-           amrex::Real phi0 = r2;
+           amrex::Real phi0 = std::exp(-r2);
+           //amrex::Real phi0 = r2;
 
         return phi0;
     }
@@ -103,7 +103,7 @@ public:
     void F_EXACT(const amrex::Real & t, const amrex::Real * x,
                  amrex::Real * U) const
     {
-        const amrex::Real y[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0]-t, x[1]-t, x[2]-t)};
+        const amrex::Real y[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0]-t, x[1], x[2])};
         U[0] = this->F_U0(0, y); 
     }
     // ================================================================
