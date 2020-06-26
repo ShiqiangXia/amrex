@@ -71,16 +71,16 @@ public:
         amrex::Real r2 = std::sin(2*M_PI*x[0]);
 #endif
 #if (AMREX_SPACEDIM == 2)
-         amrex::Real r2 = 100*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
+         //amrex::Real r2 = 100*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
         //amrex::Real r2 = x[0];
-        //amrex::Real r2 = std::sin(2*M_PI*x[0]) + std::sin(2*M_PI*x[1]) ;
+        amrex::Real r2 = std::sin(2*M_PI*x[0]) * std::sin(2*M_PI*x[1]) ;
 #endif
 #if (AMREX_SPACEDIM == 3)
         // amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1])+(x[2]-xc[2])*(x[2]-xc[2]));
         amrex::Real r2 = std::sin(2*M_PI*x[0]) * std::sin(2*M_PI*x[1])*std::sin(2*M_PI*x[2]) ;
 #endif
-           amrex::Real phi0 = std::exp(-r2);
-           //amrex::Real phi0 = r2;
+           //amrex::Real phi0 = std::exp(-r2);
+           amrex::Real phi0 = r2;
 
         return phi0;
     }
@@ -103,7 +103,9 @@ public:
     void F_EXACT(const amrex::Real & t, const amrex::Real * x,
                  amrex::Real * U) const
     {
-        const amrex::Real y[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0]-t, x[1], x[2])};
+        amrex::Real V[AMREX_SPACEDIM];
+        this->F_V(t, x, V);
+        const amrex::Real y[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0]-t*V[0], x[1]-t*V[1], x[2]-t*V[2])};
         U[0] = this->F_U0(0, y); 
     }
     // ================================================================
@@ -129,8 +131,8 @@ public:
 #if (VELOCITY_FIELD == CONSTANT_VELOCITY)
         AMREX_D_TERM
         (
-            V[0] = 1;,
-            V[1] = 0;,
+            V[0] = 1/std::sqrt(2);,
+            V[1] = 1/std::sqrt(2);,
             V[2] = 0.0;
         )
 #endif

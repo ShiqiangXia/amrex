@@ -347,7 +347,7 @@ amrex::Print() << "#############################################################
     dG.SetICs(iGeom, MatFactory, LinAdv);
 
     // WRITE TO OUTPUT
-    
+    /*
     if (inputs.plot_int > 0)
     {
         int n = 0;
@@ -358,7 +358,7 @@ amrex::Print() << "#############################################################
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, inputs.mesh.n_time_steps);
         dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
     }
-    
+    */
     // ================================================================
 
     // BOUNDARY CONDITIONS ============================================
@@ -400,7 +400,7 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
         }
 
         // WRITE TO OUTPUT
-        
+        /*
         if (inputs.plot_int > 0 && n%inputs.plot_int == 0)
         {
             std::vector<int> field_domains = {0};
@@ -408,7 +408,7 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
 
             dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
         }
-        
+        */
 
     }
     // ----------------------------------------------------------------
