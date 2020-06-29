@@ -72,8 +72,8 @@ public:
 #endif
 #if (AMREX_SPACEDIM == 2)
          //amrex::Real r2 = 100*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1]));
-        amrex::Real r2 = x[0];
-        //amrex::Real r2 = std::sin(2*M_PI*x[0]) + std::sin(2*M_PI*x[1]) ;
+        //amrex::Real r2 = x[0];
+        amrex::Real r2 = std::sin(2*M_PI*x[0]) + std::sin(2*M_PI*x[1]) ;
 #endif
 #if (AMREX_SPACEDIM == 3)
         // amrex::Real r2 = 100.0*((x[0]-xc[0])*(x[0]-xc[0])+(x[1]-xc[1])*(x[1]-xc[1])+(x[2]-xc[2])*(x[2]-xc[2]));

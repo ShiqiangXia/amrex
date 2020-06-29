@@ -1407,7 +1407,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 int fi, fj, fk;
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
                 
-                    
+                // check if close to the boundary    
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
                 {
                     kernel_flag[b] = true;
