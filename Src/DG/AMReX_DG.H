@@ -1778,14 +1778,18 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 const int dom = IBVP.F_U2DOM(ru);
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-                
 
-                // check the neighbors of cell (i,j,k)
-                // see how if enough neighbors away from the boundary.
+                //===================================================
+                // check which type of kernel to use and what are the neighbors needed
+
                 int fi, fj, fk;
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
                 
-                
+                // Right now assume the cell itself is entire
+                // we still need to handle when the cell is partial itself
+
+
+                // 1) check how far away from the boundary
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
                 {
                     kernel_flag[b] = true;
@@ -1827,8 +1831,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif 
                 }
 
-                // check the neighbors of cell (i,j,k)
-                // see if enough neighbors in the same domain (don't go cross the interface).
+                // 2) check direction line neighbors are in the same domain (don't go cross the interface).
+                //         |
+                // -------[ ]----------
+                //         |
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
                 {
                     const int dir = b/2;
@@ -1845,25 +1851,24 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                         const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
 
-                        if (nbr_is_entire) continue;
+                        if (nbr_is_entire)
+                        {
+                            tempi = nbr_i;
+                            tempj = nbr_j;
+                            tempk = nbr_k;
+                        }
                         else
                         {
                             kernel_flag[b] = false;
                             break;
                         }
-                        
-
-
                     }
-
-
                 }
 
+                // 3) check all the neighbors are in the same domain
 
 
-                
-
-                 // determine to use symmetric kernel or one-side kernel
+                // determine to use symmetric kernel or one-side kernel
                  int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM], Nj[AMREX_SPACEDIM];
                  const Real * conv_matrix_1;
                 
@@ -1902,7 +1907,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  else
                  {
                      // not enough neighbors on both sides. This is not what we want, refine the mesh
-                     Print()<<"ERROR: no enough elements to post-process in x directions! Refine the mesh"<<std::endl;
+                     Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<std::endl;
                  }
 
 
@@ -1972,122 +1977,140 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      Print()<<"ERROR: no enough elements to post-process in z directions! Refine the mesh"<<std::endl;
                  }
 #endif
-                //Print()<<"i: "<< i<<" j: "<<j<<" k: "<<k<<std::endl;
-                //Print()<<"j1_low: "<< j_low[0]<<" j1_up: "<<j_up[0]<<std::endl;
-                //Print()<<"j2_low: "<< j_low[1]<<" j2_up: "<<j_up[1]<<std::endl;
 
-                
-
-                // loop all points in a cell (i,j,k)
-                for (int point_iter=0; point_iter < Npoints; ++point_iter)
+                //===================================================
+                // Post-processing by convolution
+                // Entire element
+                if (etype%10 == DG_ELM_TYPE_ENTIRE )
                 {
-                    int nn_dir[AMREX_SPACEDIM]; 
-                    X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
-                    AMREX_D_TERM
-                    (
-                        nn_dir[0] = point_iter%Npoints_1D;,
-                        nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;,
-                        nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
-
-
-                    )
-
-                    for(int mm = 0; mm < sNp; ++mm)
+                    // use the regular kernel to do the postprocessing
+                    // loop all points in a cell (i,j,k)
+                    for (int point_iter=0; point_iter < Npoints; ++point_iter)
                     {
-                                            
-                        int mm_dir[AMREX_SPACEDIM];
+                        int nn_dir[AMREX_SPACEDIM]; 
+                        X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
                         AMREX_D_TERM
                         (
-                            mm_dir[0] = mm%(sNp_1D);,
-                            mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);, 
-                            mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                            nn_dir[0] = point_iter%Npoints_1D;,
+                            nn_dir[1] = ( (point_iter - nn_dir[0])/Npoints_1D )%Npoints_1D;,
+                            nn_dir[2] = ( point_iter - nn_dir[0] - nn_dir[1] * Npoints_1D) /( Npoints_1D * Npoints_1D );
+
+
                         )
-                        
-#if (AMREX_SPACEDIM == 1)
-                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+
+                        for(int mm = 0; mm < sNp; ++mm)
                         {
-                            int temp_i=0;
-                            int temp_j=0;
-                            int temp_k=0;
-
+                                                
+                            int mm_dir[AMREX_SPACEDIM];
+                            AMREX_D_TERM
+                            (
+                                mm_dir[0] = mm%(sNp_1D);,
+                                mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);, 
+                                mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                            )
                             
-                            temp_i = i + j1;
-
-                            Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                            
-                            temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-
-                            X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
-                             
-
-                        }
-                    
-#endif
-#if (AMREX_SPACEDIM == 2)
-                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
-                        {
-                            for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
+    #if (AMREX_SPACEDIM == 1)
+                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                             {
                                 int temp_i=0;
                                 int temp_j=0;
                                 int temp_k=0;
+
                                 
                                 temp_i = i + j1;
-                                temp_j = j + j2;
-
 
                                 Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
                                 
-
                                 temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
 
-                                temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                
-
                                 X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
-
                                 
-                               
 
                             }
-                            
-                        }
-#endif
-#if (AMREX_SPACEDIM == 3)
-                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
-                        {
-                            for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
+                        
+    #endif
+    #if (AMREX_SPACEDIM == 2)
+                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                             {
-                                for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
+                                for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
                                 {
                                     int temp_i=0;
                                     int temp_j=0;
                                     int temp_k=0;
-
                                     
                                     temp_i = i + j1;
+                                    temp_j = j + j2;
 
-                                    temp_j = j  + j2;
-
-                                    temp_k = k + j3;
 
                                     Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                                    
+
                                     temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
+
                                     temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                    temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
+                                    
 
                                     X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+
+                                    
+                                
 
                                 }
                                 
                             }
-                            
-                        }
-#endif
+    #endif
+    #if (AMREX_SPACEDIM == 3)
+                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+                            {
+                                for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
+                                {
+                                    for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
+                                    {
+                                        int temp_i=0;
+                                        int temp_j=0;
+                                        int temp_k=0;
 
-                    } // endfor m    
+                                        
+                                        temp_i = i + j1;
 
-                }// endfor point_iter
+                                        temp_j = j  + j2;
+
+                                        temp_k = k + j3;
+
+                                        Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                                        temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
+                                        temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
+                                        temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
+
+                                        X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+
+                                    }
+                                    
+                                }
+                                
+                            }
+    #endif
+
+                        } // endfor m    
+
+                    }// endfor point_iter
+
+                }
+                 // Partial element
+                else if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL)
+                {
+                    // have to compute the post-processed solution directly 
+                    // get Quadrature points for this cell
+                    // get DG solution
+                    // For each quad point, Computer the post-processed solution at this point
+                }
+                else
+                {
+                    // element is empty
+                    continue;
+                }
+
+                //===================================================
 
             }); //end paranell for
             Gpu::synchronize();
