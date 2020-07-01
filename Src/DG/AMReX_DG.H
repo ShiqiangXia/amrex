@@ -1944,7 +1944,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  }
                  else
                  {
-                     Print()<<"ERROR: no enough elements to post-process in y directions! Refine the mesh"<<std::endl;
+                     Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
                  }
 
 #endif
@@ -1974,7 +1974,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  }
                  else
                  {
-                     Print()<<"ERROR: no enough elements to post-process in z directions! Refine the mesh"<<std::endl;
+                     Print()<<"ERROR: not enough elements to post-process in z directions! Refine the mesh"<<std::endl;
                  }
 #endif
 
