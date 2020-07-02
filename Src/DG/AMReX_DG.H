@@ -1701,6 +1701,18 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const int sNp = MatFactory.space_Np;  // (k+1)^DIM
         const int sp_star = 2*sp + 1;
 
+
+        // IMPLICIT MESH
+#ifdef AMREX_USE_CUDA
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_device_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_device_mem.data();
+#else
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_host_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_host_mem.data();
+#endif
+
+        const GpuArray<Real, AMREX_SPACEDIM> iJ = iGeom._iJ;
+
         // 1D Quadrature points on the reference unithyperrectangle
         // make sure sq >= sp_star
         const int sq = iGeom.uHyperrect.q ;  
@@ -1732,6 +1744,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         MultiFab X_DG_temp;
         const int symmetric_kernl_one_side_support = 2*sp;  // 2k
         const int oneside_kernl_one_side_support = 3*sp;   // 3k
+        const int Nr = 4*sp+1;
         const int Nj_1D = 4*sp+1 ;
 
 #if (AMREX_SPACEDIM == 1)
@@ -1778,6 +1791,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 const int dom = IBVP.F_U2DOM(ru);
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                int BF_i, BF_j, BF_k;
+                Real x[AMREX_SPACEDIM];
 
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
@@ -1869,7 +1884,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 
                 // determine to use symmetric kernel or one-side kernel
-                 int j_low[AMREX_SPACEDIM], j_up[AMREX_SPACEDIM], Nj[AMREX_SPACEDIM];
+                 int j_low[3] = {0};
+                 int j_up[3] = {0};
+                 int  Nj[3] = {0};
                  const Real * conv_matrix_1;
                 
 
@@ -1920,9 +1937,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = symmetric_kernl_one_side_support;
                      Nj[1] = Nj_1D;
                      
-                     conv_matrix_2 = Conv_matrix_sym.data();
-                     
-
+                     conv_matrix_2 = Conv_matrix_sym.data();  
                  }
                  else if (kernel_flag[2])
                  {
@@ -1930,8 +1945,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = 0;
                      Nj[1] = oneside_kernl_one_side_support + 1;
                      
-                     conv_matrix_2 = Conv_matrix_Left.data();
-                     
+                     conv_matrix_2 = Conv_matrix_Left.data();     
                  }
                  else if (kernel_flag[3])
                  {
@@ -1939,8 +1953,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[1] = oneside_kernl_one_side_support;
                      Nj[1] = oneside_kernl_one_side_support + 1;
                      
-                     conv_matrix_2 = Conv_matrix_Right.data();
-                     
+                     conv_matrix_2 = Conv_matrix_Right.data();   
                  }
                  else
                  {
@@ -1956,7 +1969,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      j_up[2] = symmetric_kernl_one_side_support;
                      Nj[2] = Nj_1D;
                      conv_matrix_3 = Conv_matrix_sym.data();
-
                  }
                  else if (kernel_flag[4])
                  {
@@ -2008,58 +2020,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);, 
                                 mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
                             )
-                            
-    #if (AMREX_SPACEDIM == 1)
-                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
-                            {
-                                int temp_i=0;
-                                int temp_j=0;
-                                int temp_k=0;
 
-                                
-                                temp_i = i + j1;
-
-                                Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                                
-                                temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-
-                                X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
-                                
-
-                            }
-                        
-    #endif
-    #if (AMREX_SPACEDIM == 2)
-                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
-                            {
-                                for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
-                                {
-                                    int temp_i=0;
-                                    int temp_j=0;
-                                    int temp_k=0;
-                                    
-                                    temp_i = i + j1;
-                                    temp_j = j + j2;
-
-
-                                    Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                                    
-
-                                    temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-
-                                    temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                    
-
-                                    X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
-
-                                    
-                                
-
-                                }
-                                
-                            }
-    #endif
-    #if (AMREX_SPACEDIM == 3)
                             for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                             {
                                 for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
@@ -2078,9 +2039,13 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                         temp_k = k + j3;
 
                                         Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
-                                        temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];
-                                        temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];
-                                        temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
+
+                                        AMREX_D_TERM
+                                        (
+                                            temp_var *= conv_matrix_1[ j1-j_low[0] + mm_dir[0]*Nj[0] + nn_dir[0]*Nj[0]*(sNp_1D)];,
+                                            temp_var *= conv_matrix_2[ j2-j_low[1] + mm_dir[1]*Nj[1] + nn_dir[1]*Nj[1]*(sNp_1D)];,
+                                            temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
+                                        )
 
                                         X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
 
@@ -2089,7 +2054,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 }
                                 
                             }
-    #endif
 
                         } // endfor m    
 
@@ -2103,6 +2067,116 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     // get Quadrature points for this cell
                     // get DG solution
                     // For each quad point, Computer the post-processed solution at this point
+
+                    
+
+                    // QUADRATURE INFO
+                    int dom_Nq;
+                    long eDomQuad_pos, qi_pos, space_BF_pos;
+                    const Real * xptr;
+                    const Real * BF_ptr;
+
+                    dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+
+                    // compute  the convolution matrix for thse quadrature points. 
+                    // 1) get all points in each direction
+                    // 2) compute one-side kernel convoltuion matrix like the normal case 
+                    //    EXCEPT that the basis function is not always the same
+                    // 3) Use BF_Cell to get the support of the basis function 
+                    //    use DG_BF_1d_Table_NxL(Npoints, p, points, lo, hi, BF) to get the basis function table at points 
+
+                    // Once we have the convolution matrix
+                    // do the usual convolution step 
+                    // EXCEPT that the DG coefficients are not X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+                    // BUT X_fab(BF_i,BF_j,BF_k,......)
+
+                    for (int qi = 0; qi < dom_Nq; ++qi)
+                    {
+                        X_star_fab(i,j,k,qi + ru*Npoints) = 0.0; // initialize
+
+                        // QUADRATURE POINT on reference element
+                        qi_pos = (AMREX_SPACEDIM+1)*qi;
+                        AMREX_D_TERM
+                        (
+                            x[0] = xptr[qi_pos+0];, //x[0] = J[0]*x[0]+cell_m[0];,
+                            x[1] = xptr[qi_pos+1];, //x[1] = J[1]*x[1]+cell_m[1];,
+                            x[2] = xptr[qi_pos+2]; //x[2] = J[2]*x[2]+cell_m[2];
+                        )
+
+                        // go through all the possible neighbors
+                        
+                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+                            {
+                                for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
+                                {
+                                    for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
+                                    {
+                                        int temp_i = i + j1;
+                                        int temp_j = j  + j2;
+                                        int temp_k = k + j3;
+
+                                        int temp_etype = eType_fab(temp_i,temp_j,temp_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+
+                                        // get DG solution
+                                        // Data structures used to compute the basis functions
+                                        // and the unknown fields
+                                        DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
+
+                                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                                        // Get the support of the basis functions
+                                        BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_lo, BF_hi);
+
+                                        // compute the basis functions on [BF_lo, BF_hi] at these quadrature points for each direction. 
+                                        // DG_space_1d_BF_Table_NxL(dom_Nq, sp, all_quadrature points,BF_lo[0], BF_hi[0],BF)
+
+                                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                                        //BF_CELL(temp_i, temp_j, temp_k, temp_etype, BF_i, BF_j, BF_k);
+                                        //space_BF_pos = space_Dom_BF_pos_fab(temp_i,temp_j,temp_k,DG_DOM_BF_INFO_N_COMP_PER_DOM*dom);
+                                        //BF_ptr = &space_Dom_BF_mem_ptr[space_BF_pos];
+                                        //sol.set_BF_ptrs(BF_ptr);
+                                        //sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
+
+
+                                        for (int rr = 0; rr < Nr; ++rr)
+                                        {
+                                            Real center_point[AMREX_SPACEDIM];
+                                            AMREX_D_TERM
+                                            (
+                                                center_point[0] = x[0] * 0.5 - (rr-2*sp) + j1;,
+                                                center_point[1] = x[1] * 0.5 - (rr-2*sp) + j2;,
+                                                center_point[2] = x[2] * 0.5 - (rr-2*sp) + j3;
+
+
+                                            )
+
+                                            
+
+
+                                        }
+
+                                        
+                                        
+                                        
+                                    }
+                                
+                                }
+                            }
+
+
+
+
+
+                        
+
+
+
+                    }
+
+
                 }
                 else
                 {
