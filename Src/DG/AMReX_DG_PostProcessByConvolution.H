@@ -569,7 +569,9 @@ namespace DG
         // -------[ ]----------
         //
         int num_kernel_support[AMREX_SPACEDIM];
+
         get_num_kernel_support_one_direction(num_kernel_support, kernel_flag, symmetric_kernl_one_side_support, oneside_kernl_one_side_support);
+
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
         {
             const int dir = b/2;
@@ -612,15 +614,17 @@ namespace DG
 
         int nbr_i, nbr_j, nbr_k;
         int nbr_etype;
+        int quadrant_cout = 0;
         bool quadrant_check[4];
 
         nbr_k = k;
 
         // check (+,+)
-        quadrant_check[0] = true; // initilize
+        quadrant_check[0] = false; // initilize
 
         if(kernel_flag[1] && kernel_flag[3])
         {
+            quadrant_check[0] = true;
             for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
             {
                 nbr_i = i + ii;
@@ -631,6 +635,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[0] = false;
+                        quadrant_cout += 1;
                         break;
                     }
                 }
@@ -640,9 +645,10 @@ namespace DG
         }
         
         // check (-,+)
-        quadrant_check[1] = true; // initilize
+        quadrant_check[1] = false; // initilize
         if(kernel_flag[0] && kernel_flag[3])
         {
+            quadrant_check[1] = true;
             for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
             {
                 nbr_i = i - ii;
@@ -653,6 +659,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[1] = false;
+                        quadrant_cout += 1;
                         break;
                     }
                 }
@@ -660,10 +667,12 @@ namespace DG
             }
 
         }
+        
         // check (-,-)
-        quadrant_check[2] = true; // initilize
+        quadrant_check[2] = false; // initilize
         if(kernel_flag[0] && kernel_flag[2])
         {
+            quadrant_check[2] = true;
             for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
             {
                 nbr_i = i - ii;
@@ -674,6 +683,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[2] = false;
+                        quadrant_cout += 1;
                         break;
                     }
                 }
@@ -681,10 +691,12 @@ namespace DG
             }
             
         }
+        
         //check (+,-)
-        quadrant_check[3] = true; // initilize
+        quadrant_check[3] = false; // initilize
         if(kernel_flag[1] && kernel_flag[2])
         {
+            quadrant_check[3] = true;
             for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
             {
                 nbr_i = i + ii;
@@ -695,6 +707,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[3] = false;
+                        quadrant_cout += 1;
                         break;
                     }
                 }
@@ -703,6 +716,111 @@ namespace DG
             
             
         }
+
+        // update kernel_flag
+        bool simple_flag = false;
+        if (kernel_flag[0] && kernel_flag[1] && kernel_flag[2] && kernel_flag[3])
+        { 
+            // symmetric kernel check
+            if (quadrant_cout == 1 )
+            {
+                simple_flag = true;
+
+            }
+            else if (quadrant_cout == 2)
+            {
+                if ( (quadrant_check[0]==quadrant_check[2]))
+                {
+                    kernel_flag[0]= false;
+                    kernel_flag[1]= false;
+                    kernel_flag[2]= false;
+                    kernel_flag[3]= false;
+
+                }
+                else
+                {
+                    if (quadrant_check[0] == false && quadrant_check[1] == false ) kernel_flag[3]= false;
+                    if (quadrant_check[1] == false && quadrant_check[2] == false ) kernel_flag[0]= false;
+                    if (quadrant_check[2] == false && quadrant_check[3] == false ) kernel_flag[2]= false;
+                    if (quadrant_check[3] == false && quadrant_check[0] == false ) kernel_flag[1]= false;
+                    
+                }
+                
+
+
+            }
+            else if (quadrant_cout == 3)
+            {
+                if (quadrant_check[0])
+                {
+                    kernel_flag[0] = false;
+                    kernel_flag[2] = false;
+                }
+                if (quadrant_check[1])
+                {
+                    kernel_flag[1] = false;
+                    kernel_flag[2] = false;
+                }
+                if (quadrant_check[2])
+                {
+                    kernel_flag[1] = false;
+                    kernel_flag[3] = false;
+                }
+                if (quadrant_check[3])
+                {
+                    kernel_flag[0] = false;
+                    kernel_flag[3] = false;
+                }
+
+            }
+            else if (quadrant_cout == 4)
+            {
+                kernel_flag[0]= false;
+                kernel_flag[1]= false;
+                kernel_flag[2]= false;
+                kernel_flag[3]= false;
+
+            }
+
+        }
+        else
+        {
+            // one-side kernel (or mix kernel)
+            simple_flag = true;
+            
+        }
+
+        if (simple_flag)
+        {
+            if(quadrant_check[0] == false)
+            {
+                kernel_flag[1] = false;
+                kernel_flag[3] = false;
+
+            }
+
+            if(quadrant_check[1] == false)
+            {
+                kernel_flag[0] = false;
+                kernel_flag[3] = false;
+
+            }
+
+            if(quadrant_check[2] == false)
+            {
+                kernel_flag[0] = false;
+                kernel_flag[2] = false;
+
+            }
+
+            if(quadrant_check[3] == false)
+            {
+                kernel_flag[1] = false;
+                kernel_flag[2] = false;
+
+            }
+        }
+        
 
 #endif
 
