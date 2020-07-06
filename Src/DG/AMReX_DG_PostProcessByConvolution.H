@@ -463,6 +463,121 @@ namespace DG
     }
 
 
+    void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support,const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
+    {
+        
+        // Right now assume the cell itself is entire
+        // we still need to handle when the cell is partial itself
+
+        // 1) check avaible directions
+        for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
+        {
+            kernel_flag[b] = true;
+
+            const int dir = b/2;
+            int fi, fj, fk;
+
+            GRID_FACE(i, j, k, b, fi, fj, fk);
+            // Print()<<"dir: "<< dir<<" smallend: "<< domain.smallEnd(dir)<<" bigend: "<<domain.bigEnd(dir)<<std::endl;
+
+            // XX: only works for rectangular domain?
+            if (b==0)
+            {
+                if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_flag[b] = false;
+            }
+            else if (b == 1)
+            {
+                if ( (domain.bigEnd(dir)+1) - fi < symmetric_kernl_one_side_support  ) kernel_flag[b] = false;   
+            }
+#if (AMREX_SPACEDIM > 1)
+            else if (b==2)
+            {
+                if ( (fj - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+            }
+            else if (b==3)
+            {
+                if ( (domain.bigEnd(dir)+1) - fj < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+            }
+#endif
+#if (AMREX_SPACEDIM > 2)
+            else if (b==4)
+            {
+                if ( (fk - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+            }
+            else
+            {
+                if ( (domain.bigEnd(dir)+1) - fk < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+            }
+                
+#endif 
+        }
+
+        // 2) check neighbors on the available directions are entire element (don't go cross the interface).
+        //         |
+        // -------[ ]----------
+        //         |
+        for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
+        {
+            const int dir = b/2;
+            int nbr_i, nbr_j, nbr_k, nbr_b;
+            int nbr_etype;
+            int tempi,tempj,tempk;
+            tempi = i;
+            tempj = j;
+            tempk = k;
+
+            if(kernel_flag[b]) // if this direction will be used, check no partial elements.
+            {
+                for (int nbr_iter = 0; nbr_iter < symmetric_kernl_one_side_support; ++nbr_iter )
+                {
+                    NBR_CELL(tempi, tempj, tempk, b, nbr_i, nbr_j, nbr_k, nbr_b);
+                    nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
+
+                    if (nbr_is_entire)
+                    {
+                        tempi = nbr_i;
+                        tempj = nbr_j;
+                        tempk = nbr_k;
+                    }
+                    else
+                    {
+                        kernel_flag[b] = false;
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        // 3) check all the neighbors are entire
+        // 2D : four Quadrants
+        // 3D : eight Quadrants
+        
+#if (AMREX_SPACEDIM == 2)
+
+        // check (+,+)
+        // check (-,+)
+        // check (-,-)
+        //check (+,-)
+
+#endif
+
+#if (AMREX_SPACEDIM == 3)
+        // check (+,+,+)
+        // check (-,+,+)
+        // check (-,-,+)
+        //check (+,-,+)
+        // check (+,+,-)
+        // check (-,+,-)
+        // check (-,-,-)
+        //check (+,-,-)
+#endif
+
+
+
+    }
+
 }
 
 }

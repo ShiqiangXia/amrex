@@ -1797,92 +1797,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
 
-                int fi, fj, fk;
-                bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
                 
-                // Right now assume the cell itself is entire
-                // we still need to handle when the cell is partial itself
+                bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
 
-
-                // 1) check how far away from the boundary
-                for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
-                {
-                    kernel_flag[b] = true;
-
-                    const int dir = b/2;
-
-                    GRID_FACE(i, j, k, b, fi, fj, fk);
-                    // Print()<<"dir: "<< dir<<" smallend: "<< domain.smallEnd(dir)<<" bigend: "<<domain.bigEnd(dir)<<std::endl;
-
-                    // XX: only works for rectangular domain?
-                    if (b==0)
-                    {
-                        if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_flag[b] = false;
-                    }
-                    else if (b == 1)
-                    {
-                        if ( (domain.bigEnd(dir)+1) - fi < symmetric_kernl_one_side_support  ) kernel_flag[b] = false;   
-                    }
-#if (AMREX_SPACEDIM > 1)
-                    else if (b==2)
-                    {
-                        if ( (fj - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
-                    }
-                    else if (b==3)
-                    {
-                        if ( (domain.bigEnd(dir)+1) - fj < symmetric_kernl_one_side_support) kernel_flag[b] = false;
-                    }
-#endif
-#if (AMREX_SPACEDIM > 2)
-                    else if (b==4)
-                    {
-                        if ( (fk - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
-                    }
-                    else
-                    {
-                        if ( (domain.bigEnd(dir)+1) - fk < symmetric_kernl_one_side_support) kernel_flag[b] = false;
-                    }
-                        
-#endif 
-                }
-
-                // 2) check direction line neighbors are in the same domain (don't go cross the interface).
-                //         |
-                // -------[ ]----------
-                //         |
-                for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
-                {
-                    const int dir = b/2;
-                    int nbr_i, nbr_j, nbr_k, nbr_b;
-                    int nbr_etype;
-                    int tempi,tempj,tempk;
-                    tempi = i;
-                    tempj = j;
-                    tempk = k;
-
-                    for (int nbr_iter = 0; nbr_iter < symmetric_kernl_one_side_support; ++nbr_iter )
-                    {
-                        NBR_CELL(tempi, tempj, tempk, b, nbr_i, nbr_j, nbr_k, nbr_b);
-                        nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-                        const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
-
-                        if (nbr_is_entire)
-                        {
-                            tempi = nbr_i;
-                            tempj = nbr_j;
-                            tempk = nbr_k;
-                        }
-                        else
-                        {
-                            kernel_flag[b] = false;
-                            break;
-                        }
-                    }
-                }
-
-                // 3) check all the neighbors are in the same domain
-
-
+                check_avaible_nbrs_IM_one_side_kernel(kernel_flag, symmetric_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
+                
+                
                 // determine to use symmetric kernel or one-side kernel
                  int j_low[3] = {0};
                  int j_up[3] = {0};
