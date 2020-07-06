@@ -462,8 +462,60 @@ namespace DG
         
     }
 
+    void get_num_kernel_support_one_direction(int * kernel_support, const bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support)
+    {
+        if (kernel_flag[0] && kernel_flag[1])
+        {
+            kernel_support[0] = symmetric_kernl_one_side_support;
+        }
+        else if (kernel_flag[0] || kernel_flag[1])
+        {
+            kernel_support[0] = oneside_kernl_one_side_support;
+        }
+        else
+        {
+            // not enough neighbors on both sides. This is not what we want, refine the mesh
+            Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<std::endl;
+        }
+#if(AMREX_SPACEDIM > 1)
+        if (kernel_flag[2] && kernel_flag[3])
+        {
+            kernel_support[1] = symmetric_kernl_one_side_support;
+        }
+        else if (kernel_flag[2] || kernel_flag[3])
+        {
+            kernel_support[1] = oneside_kernl_one_side_support;
+        }
+        else
+        {
+            // not enough neighbors on both sides. This is not what we want, refine the mesh
+            Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
+        }
 
-    void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support,const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
+#endif
+
+#if(AMREX_SPACEDIM > 2)
+
+        if (kernel_flag[4] && kernel_flag[5])
+        {
+            kernel_support[2] = symmetric_kernl_one_side_support;
+        }
+        else if (kernel_flag[4] || kernel_flag[5])
+        {
+            kernel_support[2] = oneside_kernl_one_side_support;
+        }
+        else
+        {
+            // not enough neighbors on both sides. This is not what we want, refine the mesh
+            Print()<<"ERROR: not enough elements to post-process in z directions! Refine the mesh"<<std::endl;
+        }
+
+#endif
+        
+
+    }
+
+    void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support, const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
     {
         
         // Right now assume the cell itself is entire
@@ -515,7 +567,9 @@ namespace DG
         // 2) check neighbors on the available directions are entire element (don't go cross the interface).
         //         |
         // -------[ ]----------
-        //         |
+        //
+        int num_kernel_support[AMREX_SPACEDIM];
+        get_num_kernel_support_one_direction(num_kernel_support, kernel_flag, symmetric_kernl_one_side_support, oneside_kernl_one_side_support);
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
         {
             const int dir = b/2;
@@ -528,7 +582,7 @@ namespace DG
 
             if(kernel_flag[b]) // if this direction will be used, check no partial elements.
             {
-                for (int nbr_iter = 0; nbr_iter < symmetric_kernl_one_side_support; ++nbr_iter )
+                for (int nbr_iter = 0; nbr_iter < num_kernel_support[dir]; ++nbr_iter )
                 {
                     NBR_CELL(tempi, tempj, tempk, b, nbr_i, nbr_j, nbr_k, nbr_b);
                     nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
@@ -556,22 +610,146 @@ namespace DG
         
 #if (AMREX_SPACEDIM == 2)
 
+        int nbr_i, nbr_j, nbr_k;
+        int nbr_etype;
+        bool quadrant_check[4];
+
+        nbr_k = k;
+
         // check (+,+)
+        quadrant_check[0] = true; // initilize
+
+        if(kernel_flag[1] && kernel_flag[3])
+        {
+            for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
+            {
+                nbr_i = i + ii;
+                for (int jj = 1; jj <= num_kernel_support[1]; ++jj)
+                {
+                    nbr_j = j + jj;
+                    nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
+                    {  
+                        quadrant_check[0] = false;
+                        break;
+                    }
+                }
+                if (quadrant_check[0] == false) break;
+            }
+
+        }
+        
         // check (-,+)
+        quadrant_check[1] = true; // initilize
+        if(kernel_flag[0] && kernel_flag[3])
+        {
+            for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
+            {
+                nbr_i = i - ii;
+                for (int jj = 1; jj <= num_kernel_support[1]; ++jj)
+                {
+                    nbr_j = j + jj;
+                    nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
+                    {  
+                        quadrant_check[1] = false;
+                        break;
+                    }
+                }
+                if (quadrant_check[1] == false) break;
+            }
+
+        }
         // check (-,-)
+        quadrant_check[2] = true; // initilize
+        if(kernel_flag[0] && kernel_flag[2])
+        {
+            for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
+            {
+                nbr_i = i - ii;
+                for (int jj = 1; jj <= num_kernel_support[1]; ++jj)
+                {
+                    nbr_j = j - jj;
+                    nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
+                    {  
+                        quadrant_check[2] = false;
+                        break;
+                    }
+                }
+                if (quadrant_check[2] == false) break;
+            }
+            
+        }
         //check (+,-)
+        quadrant_check[3] = true; // initilize
+        if(kernel_flag[1] && kernel_flag[2])
+        {
+            for (int ii = 1; ii <= num_kernel_support[0]; ++ii)
+            {
+                nbr_i = i + ii;
+                for (int jj = 1; jj <= num_kernel_support[1]; ++jj)
+                {
+                    nbr_j = j - jj;
+                    nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
+                    {  
+                        quadrant_check[3] = false;
+                        break;
+                    }
+                }
+                if (quadrant_check[3] == false) break;
+            }
+            
+            
+        }
 
 #endif
 
 #if (AMREX_SPACEDIM == 3)
         // check (+,+,+)
+        if(kernel_flag[1] && kernel_flag[3] && kernel_flag[5])
+        {
+
+        }
         // check (-,+,+)
+        if(kernel_flag[0] && kernel_flag[3] && kernel_flag[5])
+        {
+
+        }
         // check (-,-,+)
+        if(kernel_flag[0] && kernel_flag[2] && kernel_flag[5])
+        {
+            
+        }
         //check (+,-,+)
+        if(kernel_flag[1] && kernel_flag[2] && kernel_flag[5])
+        {
+            
+        }
+        ///////////
+
         // check (+,+,-)
+        if(kernel_flag[1] && kernel_flag[3] && kernel_flag[4])
+        {
+
+        }
         // check (-,+,-)
+        if(kernel_flag[0] && kernel_flag[3] && kernel_flag[4])
+        {
+
+        }
         // check (-,-,-)
+        if(kernel_flag[0] && kernel_flag[2] && kernel_flag[4])
+        {
+            
+        }
         //check (+,-,-)
+        if(kernel_flag[1] && kernel_flag[2] && kernel_flag[4])
+        {
+            
+        }
+        
 #endif
 
 

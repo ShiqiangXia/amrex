@@ -1800,7 +1800,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
 
-                check_avaible_nbrs_IM_one_side_kernel(kernel_flag, symmetric_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
+                check_avaible_nbrs_IM_one_side_kernel(kernel_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
                 
                 
                 // determine to use symmetric kernel or one-side kernel
