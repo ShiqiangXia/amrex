@@ -520,8 +520,10 @@ namespace DG
         
         // Right now assume the cell itself is entire
         // we still need to handle when the cell is partial itself
+        const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+        const bool element_is_entire = etype%10 == DG_ELM_TYPE_ENTIRE
 
-        // 1) check avaible directions
+        // 1) check avaible directions (away from the boundary)
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
         {
             kernel_flag[b] = true;
@@ -588,27 +590,58 @@ namespace DG
                 {
                     NBR_CELL(tempi, tempj, tempk, b, nbr_i, nbr_j, nbr_k, nbr_b);
                     nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-                    const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
 
-                    if (nbr_is_entire)
-                    {
-                        tempi = nbr_i;
-                        tempj = nbr_j;
-                        tempk = nbr_k;
-                    }
-                    else
-                    {
+                    if (element_is_entire)
+                    {   
+                        // entire cell: we want only use all neighbors that are entire 
+                        const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
+                        if (nbr_is_entire)
+                        {
+                            tempi = nbr_i;
+                            tempj = nbr_j;
+                            tempk = nbr_k;
+                        }
+                        else
+                        {
                         kernel_flag[b] = false;
                         break;
+                        }
+
                     }
+                    if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL) 
+                    {
+                        // partial cell, we want to use all avaibale neightbors
+                        const bool nbr_is_small = (nbr_etype%10 == DG_ELM_TYPE_SMALL);
+                        const bool nbr_is_empty = (nbr_etype == DG_ELM_TYPE_EMPTY);
+                        if (nbr_is_small || nbr_is_empty)
+                        {
+                            kernel_flag[b] = false;
+                            break;
+                        }
+                        else
+                        {
+                            tempi = nbr_i;
+                            tempj = nbr_j;
+                            tempk = nbr_k;
+                            
+                        }
+                        
+
+
+                    }
+                    
+
+                    
                 }
             }
 
         }
 
-        // 3) check all the neighbors are entire
+        // 3) check all the neighbors are entire for entire cell
         // 2D : four Quadrants
         // 3D : eight Quadrants
+        if (element_is_entire)
+        {
         
 #if (AMREX_SPACEDIM == 2)
 
@@ -869,6 +902,7 @@ namespace DG
         }
         
 #endif
+        }
 
 
 
