@@ -518,8 +518,7 @@ namespace DG
     void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support, const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
     {
         
-        // Right now assume the cell itself is entire
-        // we still need to handle when the cell is partial itself
+        
         const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
         const bool element_is_entire = etype%10 == DG_ELM_TYPE_ENTIRE
 
@@ -907,6 +906,145 @@ namespace DG
 
 
     }
+
+
+    void cut_ele_compute_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & AA, const int & i, const int & j, const int & k, const int & kernel_choice,  int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {
+        const int Npoints = points.size();
+        const int Np = sp+1; // k+1
+        const int Nr = 4*sp+1;  //  -2k <= r <= 2k
+        const int NJ = 3*sp+1; //  0<= j <= 3k
+        const Real iupper = 1.0;
+        const Real ilower = -1.0;
+
+        AA.resize(Npoints*Np*Nr*NJ);
+        
+
+        Real center_point_A; 
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int jj = 0; jj <  NJ; ++jj)
+            {
+                for (int rr = 0; rr < Nr; ++rr )
+                {
+                     Real rlt_A[Np];
+                    if (kernel_choice == 1) // right kernle
+                    {
+                        center_point_A = points[nn]*0.5 - (rr-2*sp) - (jj);
+                        
+                        if (jj == 0)
+                        {// has to split the integral (because we are considering one side kernel)
+                            Bspline_integral(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights);
+                        
+                        }
+                        else
+                        {
+                            Bspline_integral(rlt_A, Np, center_point_A, iupper, ilower, quad_points, quad_weights);
+                        
+                        }
+                    }
+                    else // left kernel
+                    {
+                        center_point_A = points[nn]*0.5 - (rr-2*sp) + (jj);
+
+                        if (jj == 0)
+                        {// has to split the integral (because we are considering one side kernel)
+                            Bspline_integral(rlt_A, Np, center_point_A, points[nn], ilower, quad_points, quad_weights);
+                        
+                        }
+                        else
+                        {
+                            Bspline_integral(rlt_A, Np, center_point_A, iupper, ilower, quad_points, quad_weights);
+                        
+                        }
+
+                    }
+
+                    
+                    for (int mm = 0; mm < Np; ++mm)
+                    {
+                        AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ] = rlt_A[mm];
+                       
+   
+
+                    }
+                }
+            }
+        }
+
+    }
+
+    void cut_ele_get_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & matrix, const int & i, const int & j, const int & k, const int & kernel_choice, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    {
+        if(kernel_choice == 0)
+        {
+            Print()<<"ERROR: partial cell can't use symmetric kernel!!!"<<std::endl;
+        }
+        // basic info 
+        const int Npoints = points.size();
+        const int Np = sp+1;
+        const int Nr = 4*sp+1;
+        const int NJ = 3*sp+1;
+
+         matrix.resize(Npoints*Np*NJ);
+
+         //step 1. load cr
+
+        const Real * cr ;
+
+        if (sp == 1) cr = cr_oneside_1 ;
+        else if (sp == 2) cr = cr_oneside_2;
+        //else if (sp == 3) cr = cr_oneside_3;
+        //else if (sp == 4) cr = cr_oneside_4;
+        //else if (sp == 5) cr =cr_oneside_5;
+        else
+        {
+            Print()<<"Order "<<sp<<" is not implemented"<< std::endl;
+        }
+
+        // setp 2. compute A_{n,m,r,j}
+        
+
+        Gpu::ManagedVector<Real> AA;
+
+        cut_ele_compute_convolution_matrix_one_side_kernel(AA, i,j,k, kernel_choice, sp, points, quad_points, quad_weights);
+        // step 3. sum A_{n,m,r,j} * cr/2 over r
+
+        for (int nn = 0; nn < Npoints; ++nn)
+        {
+            for (int mm = 0; mm < Np; ++mm)
+            {
+                for (int jj = 0; jj <  NJ; ++jj)
+                {
+                    matrix[jj+mm*NJ + nn*NJ*Np] = 0.0;
+                    
+                    for (int rr = 0; rr < Nr; ++rr )
+                    {
+                        if (kernel_choice == 1)
+                        {
+                            matrix[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * AA[ jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                        }
+                        else if (kernel_choice == -1)
+                        {
+                             matrix[ jj + mm*NJ + nn*NJ*Np ] += 2.0*0.5 * cr[rr] * AA[ NJ-1-jj + rr*NJ + mm*NJ*Nr + nn*NJ*Nr*Np ];
+                        }
+  
+                    }
+                       
+                }
+            }
+        }
+        
+
+
+
+
+    }
+
+
+
+
 
 }
 

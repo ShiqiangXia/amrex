@@ -1405,12 +1405,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // check the neighbors of cell (i,j,k)
                 // see how many neighbor cells are avaiable
                 int fi, fj, fk;
-                bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
+                bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES];
                 
                 
                 for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
                 {
-                    kernel_flag[b] = true;
+                    kernel_dir_flag[b] = true;
 
                     const int dir = b/2;
 
@@ -1420,30 +1420,30 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     // XX: only works for rectangular domain?
                     if (b==0)
                     {
-                        if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_flag[b] = false;
+                        if ( (fi - domain.smallEnd(dir)) < symmetric_kernl_one_side_support ) kernel_dir_flag[b] = false;
                     }
                     else if (b == 1)
                     {
-                        if ( (domain.bigEnd(dir)+1) - fi < symmetric_kernl_one_side_support  ) kernel_flag[b] = false;   
+                        if ( (domain.bigEnd(dir)+1) - fi < symmetric_kernl_one_side_support  ) kernel_dir_flag[b] = false;   
                     }
 #if (AMREX_SPACEDIM > 1)
                     else if (b==2)
                     {
-                        if ( (fj - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                        if ( (fj - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_dir_flag[b] = false;
                     }
                     else if (b==3)
                     {
-                        if ( (domain.bigEnd(dir)+1) - fj < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                        if ( (domain.bigEnd(dir)+1) - fj < symmetric_kernl_one_side_support) kernel_dir_flag[b] = false;
                     }
 #endif
 #if (AMREX_SPACEDIM > 2)
                     else if (b==4)
                     {
-                        if ( (fk - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                        if ( (fk - domain.smallEnd(dir)) < symmetric_kernl_one_side_support) kernel_dir_flag[b] = false;
                     }
                     else
                     {
-                        if ( (domain.bigEnd(dir)+1) - fk < symmetric_kernl_one_side_support) kernel_flag[b] = false;
+                        if ( (domain.bigEnd(dir)+1) - fk < symmetric_kernl_one_side_support) kernel_dir_flag[b] = false;
                     }
                         
 #endif 
@@ -1455,7 +1455,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  const Real * conv_matrix_1;
                 
 
-                 if (kernel_flag[0] && kernel_flag[1])
+                 if (kernel_dir_flag[0] && kernel_dir_flag[1])
                  {
                      // use symmetric kernel (have enough neighbors on both sides)
                      j_low[0] = - symmetric_kernl_one_side_support;
@@ -1466,7 +1466,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      //conv_matrix_1 = Conv_matrix_sym;
 
                  }
-                 else if (kernel_flag[0])
+                 else if (kernel_dir_flag[0])
                  {
                      // use left-side kernel (not enough neighbors on the right )
                      j_low[0] = -oneside_kernl_one_side_support;
@@ -1476,7 +1476,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      conv_matrix_1 = Conv_matrix_Left.data();
                      
                  }
-                 else if (kernel_flag[1])
+                 else if (kernel_dir_flag[1])
                  {
                      // use right-side kernel (not enough neigbors on the left)
                      j_low[0]= 0;
@@ -1496,7 +1496,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #if (AMREX_SPACEDIM > 1)
                 const Real * conv_matrix_2;
                 
-                if (kernel_flag[2] && kernel_flag[3])
+                if (kernel_dir_flag[2] && kernel_dir_flag[3])
                  {
                      j_low[1] = - symmetric_kernl_one_side_support;
                      j_up[1] = symmetric_kernl_one_side_support;
@@ -1506,7 +1506,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      
 
                  }
-                 else if (kernel_flag[2])
+                 else if (kernel_dir_flag[2])
                  {
                      j_low[1] = -oneside_kernl_one_side_support;
                      j_up[1] = 0;
@@ -1515,7 +1515,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      conv_matrix_2 = Conv_matrix_Left.data();
                      
                  }
-                 else if (kernel_flag[3])
+                 else if (kernel_dir_flag[3])
                  {
                      j_low[1]= 0;
                      j_up[1] = oneside_kernl_one_side_support;
@@ -1532,7 +1532,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
 #if (AMREX_SPACEDIM > 2)
                 const Real * conv_matrix_3;
-                if (kernel_flag[4] && kernel_flag[5])
+                if (kernel_dir_flag[4] && kernel_dir_flag[5])
                  {
                      j_low[2] = - symmetric_kernl_one_side_support;
                      j_up[2] = symmetric_kernl_one_side_support;
@@ -1540,14 +1540,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                      conv_matrix_3 = Conv_matrix_sym.data();
 
                  }
-                 else if (kernel_flag[4])
+                 else if (kernel_dir_flag[4])
                  {
                      j_low[2] = -oneside_kernl_one_side_support;
                      j_up[2] = 0;
                      Nj[2] = oneside_kernl_one_side_support + 1;
                      conv_matrix_3 = Conv_matrix_Left.data();
                  }
-                 else if (kernel_flag[5])
+                 else if (kernel_dir_flag[5])
                  {
                      j_low[2]= 0;
                      j_up[2] = oneside_kernl_one_side_support;
@@ -1737,7 +1737,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             // 1. go through all elements
             // 2. for each element, check neighbors and determine what kernel to use.
             // 3. do the convolution
-            //    1) interior entire element: use symmetric kernel (pre-computed data)
+            //    1) interior entire element: use symmetric kernel or one-side kernel (pre-computed data)
             //    2) boundary element: use one side kernel (pre-computed data)
             //    3）interface partial element： use one side kernel and compute directly. 
 
@@ -1793,14 +1793,16 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                 int BF_i, BF_j, BF_k;
                 Real x[AMREX_SPACEDIM];
+                int kernel_choice[AMREX_SPACEDIM]; // 0: symmetric kernel;  -1:  left kernel; 1: right kernel
 
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
 
                 
-                bool kernel_flag[DG_CELL_N_SPACE_BOUNDARIES];
+                bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES];
 
-                check_avaible_nbrs_IM_one_side_kernel(kernel_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
+
+                check_avaible_nbrs_IM_one_side_kernel(kernel_dir_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
                 
                 
                 // determine to use symmetric kernel or one-side kernel
@@ -1810,33 +1812,36 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  const Real * conv_matrix_1;
                 
 
-                 if (kernel_flag[0] && kernel_flag[1])
+                 if (kernel_dir_flag[0] && kernel_dir_flag[1])
                  {
                      // use symmetric kernel (have enough neighbors on both sides)
                      j_low[0] = - symmetric_kernl_one_side_support;
                      j_up[0] = symmetric_kernl_one_side_support;
                      Nj[0] = Nj_1D;
+                     kernel_choice[0] = 0;
                      
                      conv_matrix_1 = Conv_matrix_sym.data();
                      //conv_matrix_1 = Conv_matrix_sym;
 
                  }
-                 else if (kernel_flag[0])
+                 else if (kernel_dir_flag[0])
                  {
                      // use left-side kernel (not enough neighbors on the right )
                      j_low[0] = -oneside_kernl_one_side_support;
                      j_up[0] = 0;
                      Nj[0] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[0] = -1;
                      
                      conv_matrix_1 = Conv_matrix_Left.data();
                      
                  }
-                 else if (kernel_flag[1])
+                 else if (kernel_dir_flag[1])
                  {
                      // use right-side kernel (not enough neigbors on the left)
                      j_low[0]= 0;
                      j_up[0] = oneside_kernl_one_side_support;
                      Nj[0] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[0] = 1;
                      
                      conv_matrix_1 = Conv_matrix_Right.data();
                      
@@ -1851,27 +1856,30 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #if (AMREX_SPACEDIM > 1)
                 const Real * conv_matrix_2;
                 
-                if (kernel_flag[2] && kernel_flag[3])
+                if (kernel_dir_flag[2] && kernel_dir_flag[3])
                  {
                      j_low[1] = - symmetric_kernl_one_side_support;
                      j_up[1] = symmetric_kernl_one_side_support;
                      Nj[1] = Nj_1D;
+                     kernel_choice[1] = 0; 
                      
                      conv_matrix_2 = Conv_matrix_sym.data();  
                  }
-                 else if (kernel_flag[2])
+                 else if (kernel_dir_flag[2])
                  {
                      j_low[1] = -oneside_kernl_one_side_support;
                      j_up[1] = 0;
                      Nj[1] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[1] = -1;
                      
                      conv_matrix_2 = Conv_matrix_Left.data();     
                  }
-                 else if (kernel_flag[3])
+                 else if (kernel_dir_flag[3])
                  {
                      j_low[1]= 0;
                      j_up[1] = oneside_kernl_one_side_support;
                      Nj[1] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[1] = 1;
                      
                      conv_matrix_2 = Conv_matrix_Right.data();   
                  }
@@ -1883,25 +1891,30 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
 #if (AMREX_SPACEDIM > 2)
                 const Real * conv_matrix_3;
-                if (kernel_flag[4] && kernel_flag[5])
+                if (kernel_dir_flag[4] && kernel_dir_flag[5])
                  {
                      j_low[2] = - symmetric_kernl_one_side_support;
                      j_up[2] = symmetric_kernl_one_side_support;
                      Nj[2] = Nj_1D;
+                     kernel_choice[2] = 0;
+
                      conv_matrix_3 = Conv_matrix_sym.data();
                  }
-                 else if (kernel_flag[4])
+                 else if (kernel_dir_flag[4])
                  {
                      j_low[2] = -oneside_kernl_one_side_support;
                      j_up[2] = 0;
                      Nj[2] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[2] = -1;
+
                      conv_matrix_3 = Conv_matrix_Left.data();
                  }
-                 else if (kernel_flag[5])
+                 else if (kernel_dir_flag[5])
                  {
                      j_low[2]= 0;
                      j_up[2] = oneside_kernl_one_side_support;
                      Nj[2] = oneside_kernl_one_side_support + 1;
+                     kernel_choice[2] = 1;
                      conv_matrix_3 = Conv_matrix_Right.data();
                  }
                  else
@@ -2004,14 +2017,64 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     // 1) get all points in each direction
                     // 2) compute one-side kernel convoltuion matrix like the normal case 
                     //    EXCEPT that the basis function is not always the same
-                    // 3) Use BF_Cell to get the support of the basis function 
-                    //    use DG_BF_1d_Table_NxL(Npoints, p, points, lo, hi, BF) to get the basis function table at points 
+                    //     * Let's assume all the neighbor cells are entire/large (so no need to change baisis functions)
+                    //     *  otherwise we need to Use BF_Cell to get the support of the basis function 
+                    //       use DG_BF_1d_Table_NxL(Npoints, p, points, lo, hi, BF) to get the basis function table at points 
 
                     // Once we have the convolution matrix
-                    // do the usual convolution step 
+                    // 3) do the usual convolution step 
                     // EXCEPT that the DG coefficients are not X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
                     // BUT X_fab(BF_i,BF_j,BF_k,......)
 
+                    // 1) get all points in each direction
+
+                    AMREX_D_TERM
+                    (
+                        Gpu::ManagedVector<Real> cut_ele_points_x; 
+                        cut_ele_points_x.resize(dom_Nq);
+                        Gpu::ManagedVector<Real> cut_ele_conv_matrix_x;,
+
+                        Gpu::ManagedVector<Real> cut_ele_points_y;
+                        cut_ele_points_y.resize(dom_Nq);
+                        Gpu::ManagedVector<Real> cut_ele_conv_matrix_y;,
+
+                        Gpu::ManagedVector<Real> cut_ele_points_z;
+                        cut_ele_points_z.resize(dom_Nq);
+                        Gpu::ManagedVector<Real> cut_ele_conv_matrix_z;
+
+                    )
+
+                    for (int qi = 0; qi < dom_Nq; ++qi)
+                    {
+                        // QUADRATURE POINT on reference element
+                        qi_pos = (AMREX_SPACEDIM+1)*qi;
+                        AMREX_D_TERM
+                        (
+                            cut_ele_points_x[qi] = xptr[qi_pos+0];, //x[0] = J[0]*x[0]+cell_m[0];,
+                            cut_ele_points_y[qi] = xptr[qi_pos+1];, //x[1] = J[1]*x[1]+cell_m[1];,
+                            cut_ele_points_z[qi] = xptr[qi_pos+2]; //x[2] = J[2]*x[2]+cell_m[2];
+                        )
+                    }
+
+                    // 2) compute one-side kernel convoltuion matrix like the normal case 
+                    //    EXCEPT that the basis function is not always the same
+                   AMREX_D_TERM
+                   (
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_x,i,j,k, kernel_choice[0], cut_ele_points_x,sp,quad_points,quad_weights);,
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_y,i,j,k, kernel_choice[1], cut_ele_points_y,sp,quad_points,quad_weights);,
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_z,i,j,k, kernel_choice[2], cut_ele_points_z,sp,quad_points,quad_weights);
+
+                   )
+
+                   // 3) do the usual convolution step 
+
+                   
+
+
+
+
+                     
+/////////////////////////////////////////////////////////////////////////////
                     for (int qi = 0; qi < dom_Nq; ++qi)
                     {
                         X_star_fab(i,j,k,qi + ru*Npoints) = 0.0; // initialize
