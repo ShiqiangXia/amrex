@@ -1687,7 +1687,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
     Real ImplicitMesh_PostProcessedEvalErrorNorm(const Real & t,
                        const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
                        const MatrixFactory<N_PHI, N_DOM> & MatFactory,
-                       const IBVP_CLASS & IBVP, const Multifab & DG_star_pos_fab, Gpu::ManagedVector<Real> & DG_star_data )
+                       const IBVP_CLASS & IBVP, longMultiFab & DG_star_pos_fab, Gpu::ManagedVector<Real> & DG_star_data )
     {
         // PROFILING --------------------------------------------------
         BL_PROFILE("DG::EvalErrorNorm(const Real &, const ImplicitGeometry<N_PHI, N_DOM> &, ....)");
@@ -1727,6 +1727,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
             Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
             Array4<Real const> const & X_fab = this->X_star.array(mfi);
+            Array4<long> const & DG_star_position_fab = DG_star_pos_fab.array(mfi);
             Array4<Real> const & err_fab = error.array(mfi);
 
             ParallelFor(bx,
@@ -1765,7 +1766,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-                    DG_data_pos = DG_star_pos_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    DG_data_pos = DG_star_position_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                     dgptr = &DG_star_data[DG_data_pos];
 
                     // Quadrature info
@@ -1825,14 +1826,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
     }
 
 
-
-    void Convolution_Postprocessing_ImplicitMesh_OneSideKernel(const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
-                                const MatrixFactory<N_PHI, N_DOM> & MatFactory)
+    template<typename IBVP_CLASS>
+    void Convolution_Postprocessing_ImplicitMesh_OneSideKernel(const Real & t, const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                                const MatrixFactory<N_PHI, N_DOM> & MatFactory,const IBVP_CLASS & IBVP)
     {
         // This function postprocesses the DG solution by convolution with a symmetric or one-side kernel 
         // depending on the location of the cell. The function also handles the implict mesh structure.
         // If an element is cut by the distance function (partial cell), the convolution is computed directely.
-        // While is the element is regular (entire cell), the convolution is obtained using pre-computed data.
+        // While if the element is regular (entire cell), the convolution is obtained using pre-computed data.
 
 
         // step 1: load parameteres and pre-compute necessary data for postprocessing (for regular element).
@@ -1884,10 +1885,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             //    2) boundary element: use one side kernel (pre-computed data)
             //    3）interface partial element： use one side kernel and compute directly. 
 
-        MultiFab X_DG_temp, DG_star_pos_fab;
-
+        MultiFab X_DG_temp;
+        
+        longMultiFab DG_star_pos_fab;
         Gpu::ManagedVector<Real> DG_star_data;
-        long DG_star_pos = 0L;
+        long DG_star_pos;
+        DG_star_pos = 0L;
 
         const int symmetric_kernl_one_side_support = 2*sp;  // 2k
         const int oneside_kernl_one_side_support = 3*sp;   // 3k
@@ -1908,7 +1911,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
 
         // Multifab to store post-processed data
-        this->X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
+        // this->X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
         X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, oneside_kernl_one_side_support); //MultiFab with 3k ghoast cells
 
         DG_star_pos_fab.define(iGeom.cc_ba,iGeom.dm,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*N_DOM , 0);//multifab to store position
@@ -1921,7 +1924,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
        // loop all boxes
         const Box & domain = iGeom.geom.Domain();
 
-        for (MFIter mfi(this->X_star); mfi.isValid(); ++mfi)
+        for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
 
@@ -1931,6 +1934,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<long const> const & space_Dom_BF_pos_fab = MatFactory.space_Dom_BF_pos.array(mfi);
 
             Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
+            Array4<long > const & DG_star_position_fab = DG_star_pos_fab.array(mfi);
+
             // Array4<Real> const & X_star_fab = this->X_star.array(mfi);
             
             // loop all cells in a box
@@ -1948,7 +1953,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // check which type of kernel to use and what are the neighbors needed
 
                 
-                bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES];
+                bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES]; // false : if one direction is unavaible
 
 
                 check_avaible_nbrs_IM_one_side_kernel(kernel_dir_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
@@ -2074,7 +2079,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                 //===================================================
                 // Post-processing by convolution
-                DG_star_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom) = DG_star_pos;
+                DG_star_position_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom) = DG_star_pos;
                 // Entire element
                 if (etype%10 == DG_ELM_TYPE_ENTIRE )
                 {
@@ -2291,7 +2296,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 else
                 {
                     // element is empty
-                    continue;
+                    
                 }
 
                 //===================================================

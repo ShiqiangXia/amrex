@@ -520,7 +520,7 @@ namespace DG
         
         
         const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-        const bool element_is_entire = etype%10 == DG_ELM_TYPE_ENTIRE
+        const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
 
         // 1) check avaible directions (away from the boundary)
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
@@ -761,7 +761,7 @@ namespace DG
             }
             else if (quadrant_cout == 2)
             {
-                if ( (quadrant_check[0]==quadrant_check[2]))
+                if ( quadrant_check[0]==quadrant_check[2])
                 {
                     kernel_flag[0]= false;
                     kernel_flag[1]= false;
@@ -932,7 +932,7 @@ namespace DG
                     if (kernel_choice == 1) // right kernle
                     {
                         center_point_A = points[nn]*0.5 - (rr-2*sp) - (jj);
-                        
+
                         if (jj == 0)
                         {// has to split the integral (because we are considering one side kernel)
                             Bspline_integral(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights);
