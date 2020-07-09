@@ -1886,10 +1886,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             //    3）interface partial element： use one side kernel and compute directly. 
 
         MultiFab X_DG_temp;
-        
+
         longMultiFab DG_star_pos_fab;
-        Gpu::ManagedVector<Real> DG_star_data;
+        Gpu::HostVector<Real> DG_star_data;
+        DG_star_data.resize(5);
         long DG_star_pos;
+
         DG_star_pos = 0L;
 
         const int symmetric_kernl_one_side_support = 2*sp;  // 2k
@@ -1940,7 +1942,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             
             // loop all cells in a box
             ParallelFor(bx,N_U,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
+            [&] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
             {
                 
                 const int dom = IBVP.F_U2DOM(ru);
@@ -2087,6 +2089,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     // loop all points in a cell (i,j,k)
                 
                     DG_star_data.resize(DG_star_pos+Npoints);
+                    //DG_star_data.resize(5);
 
                     for (int point_iter=0; point_iter < Npoints; ++point_iter)
                     {
