@@ -1683,6 +1683,148 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
     } // end func  Convolution_Postprocessing_OneSideKernel
 
 // ####################################################################
+    template<typename IBVP_CLASS>
+    Real ImplicitMesh_PostProcessedEvalErrorNorm(const Real & t,
+                       const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                       const MatrixFactory<N_PHI, N_DOM> & MatFactory,
+                       const IBVP_CLASS & IBVP, const Multifab & DG_star_pos_fab, Gpu::ManagedVector<Real> & DG_star_data )
+    {
+        // PROFILING --------------------------------------------------
+        BL_PROFILE("DG::EvalErrorNorm(const Real &, const ImplicitGeometry<N_PHI, N_DOM> &, ....)");
+        // ------------------------------------------------------------
+
+        // PARAMETERS =================================================
+        // GRID
+        const GpuArray<Real, AMREX_SPACEDIM> dx = iGeom._dx;
+        const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
+        const GpuArray<Real, AMREX_SPACEDIM> J = iGeom._J;
+        const GpuArray<Real, AMREX_SPACEDIM> iJ = iGeom._iJ;
+        const Real aJ = iGeom._aJ;
+
+        // IMPLICIT MESH
+#ifdef AMREX_USE_CUDA
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_device_mem.data();
+        
+#else
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_host_mem.data();
+        
+#endif
+
+        // DG
+       
+
+        // VARIABLES ==================================================
+        MultiFab error(iGeom.cc_ba, iGeom.dm, 2, 0);
+        Real err;
+        // ============================================================
+
+        // EVAL THE ERROR =============================================
+        for (MFIter mfi(error); mfi.isValid(); ++mfi)
+        {
+            const Box & bx = mfi.validbox();
+            
+            Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
+            Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
+            Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
+            Array4<Real const> const & X_fab = this->X_star.array(mfi);
+            Array4<Real> const & err_fab = error.array(mfi);
+
+            ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // INITIALIZATION
+                err_fab(i,j,k,0) = 0.0;
+                err_fab(i,j,k,1) = 0.0;
+                
+
+                // LOCAL PARAMETERS
+                const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
+
+                // LOCAL VARIABLES
+                int dom, etype;
+                // int BF_i, BF_j, BF_k;
+                Real x[AMREX_SPACEDIM], w;
+                Real Uh[N_U], Ue[N_U];
+                Real integrand;
+
+                // QUADRATURE INFO
+                int dom_Nq;
+                long eDomQuad_pos, qi_pos, DG_data_pos;// space_BF_pos;
+                const Real * xptr;
+                const Real * dgptr;
+                // const Real * BF_ptr;
+
+                // Data structures used to compute the basis functions
+                // and the unknown fields
+
+                //SX
+                // DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
+
+                // CYCLE OVER THE UNKNOWN FIELDS
+                for (int ru = 0; ru < N_U; ++ru)
+                {
+                    dom = IBVP.F_U2DOM(ru);
+                    etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    DG_data_pos = DG_star_pos_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    dgptr = &DG_star_data[DG_data_pos];
+
+                    // Quadrature info
+                    dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                    xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+
+                    
+                    // COMPUTE THE INTEGRALS
+                    for (int qi = 0; qi < dom_Nq; ++qi)
+                    {
+                        // QUADRATURE POINT AND WEIGHT
+                        qi_pos = (AMREX_SPACEDIM+1)*qi;
+                        AMREX_D_TERM
+                        (
+                            x[0] = xptr[qi_pos+0]; x[0] = J[0]*x[0]+cell_m[0];,
+                            x[1] = xptr[qi_pos+1]; x[1] = J[1]*x[1]+cell_m[1];,
+                            x[2] = xptr[qi_pos+2]; x[2] = J[2]*x[2]+cell_m[2];
+                        )
+                        w = xptr[qi_pos+AMREX_SPACEDIM]; w = w*aJ;
+                        
+                        // post-processed SOLUTION
+                        
+                        Uh[ru] = dgptr[qi];
+
+                        
+                        // EXACT SOLUTION
+                        IBVP.F_EXACT(t, x, Ue);
+
+                        //integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
+                        err_fab(i,j,k,0) += integrand*w;
+                        
+                        Ue[ru] -= Uh[ru];
+                        //integrand = std::abs(Ue[ru]);
+                        integrand = std::pow(Ue[ru],2.0);
+                        err_fab(i,j,k,1) += integrand*w;
+                    }
+                }
+               
+            });
+            Gpu::synchronize();
+        }
+        // ============================================================
+
+        // SUM =============================
+        Print() << "(error.sum(0)): " << std::sqrt(error.sum(0)) << std::endl;
+        Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
+        
+        err = std::sqrt(error.sum(1))/std::sqrt(error.sum(0));
+        // err = std::sqrt(error.sum(1));
+        // =================================
+
+        return err;
+
+
+    }
+
+
 
     void Convolution_Postprocessing_ImplicitMesh_OneSideKernel(const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
                                 const MatrixFactory<N_PHI, N_DOM> & MatFactory)
@@ -1700,6 +1842,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const int sNp_1D = sp+1;  // k+1
         const int sNp = MatFactory.space_Np;  // (k+1)^DIM
         const int sp_star = 2*sp + 1;
+        Real err;
 
 
         // IMPLICIT MESH
@@ -1741,7 +1884,11 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             //    2) boundary element: use one side kernel (pre-computed data)
             //    3）interface partial element： use one side kernel and compute directly. 
 
-        MultiFab X_DG_temp;
+        MultiFab X_DG_temp, DG_star_pos_fab;
+
+        Gpu::ManagedVector<Real> DG_star_data;
+        long DG_star_pos = 0L;
+
         const int symmetric_kernl_one_side_support = 2*sp;  // 2k
         const int oneside_kernl_one_side_support = 3*sp;   // 3k
         const int Nr = 4*sp+1;
@@ -1764,6 +1911,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         this->X_star.define(iGeom.cc_ba, iGeom.dm, Npoints * N_U, 0 ); // Npoints x N_u components; creat 0 ghoast cells
         X_DG_temp.define(iGeom.cc_ba,iGeom.dm, sNp*N_U, oneside_kernl_one_side_support); //MultiFab with 3k ghoast cells
 
+        DG_star_pos_fab.define(iGeom.cc_ba,iGeom.dm,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*N_DOM , 0);//multifab to store position
+
         // copy from the DG solution
         MultiFab::Copy(X_DG_temp,this->X_new, 0, 0, sNp*N_U, 0);
         X_DG_temp.FillBoundary(iGeom.geom.periodicity());
@@ -1782,7 +1931,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<long const> const & space_Dom_BF_pos_fab = MatFactory.space_Dom_BF_pos.array(mfi);
 
             Array4<Real const> const & X_fab = X_DG_temp.array(mfi);
-            Array4<Real> const & X_star_fab = this->X_star.array(mfi);
+            // Array4<Real> const & X_star_fab = this->X_star.array(mfi);
             
             // loop all cells in a box
             ParallelFor(bx,N_U,
@@ -1925,15 +2074,21 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                 //===================================================
                 // Post-processing by convolution
+                DG_star_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom) = DG_star_pos;
                 // Entire element
                 if (etype%10 == DG_ELM_TYPE_ENTIRE )
                 {
                     // use the regular kernel to do the postprocessing
                     // loop all points in a cell (i,j,k)
+                
+                    DG_star_data.resize(DG_star_pos+Npoints);
+
                     for (int point_iter=0; point_iter < Npoints; ++point_iter)
                     {
                         int nn_dir[AMREX_SPACEDIM]; 
-                        X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
+                        long posi = DG_star_pos + point_iter;
+                        DG_star_data[posi] = 0.0;
+                        // X_star_fab(i,j,k,point_iter + ru*Npoints) = 0.0;
                         AMREX_D_TERM
                         (
                             nn_dir[0] = point_iter%Npoints_1D;,
@@ -1980,7 +2135,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                             temp_var *= conv_matrix_3[ j3-j_low[2] + mm_dir[2]*Nj[2] + nn_dir[2]*Nj[2]*(sNp_1D)];
                                         )
 
-                                        X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+                                        //X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+                                        DG_star_data[posi] +=temp_var;
 
                                     }
                                     
@@ -1991,6 +2147,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         } // endfor m    
 
                     }// endfor point_iter
+
+                    DG_star_pos += Npoints; // update DG_star_pos
 
                 }
                  // Partial element
@@ -2012,6 +2170,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
                     eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
                     xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+
+                    DG_star_data.resize(DG_star_pos+dom_Nq);
 
                     // compute  the convolution matrix for thse quadrature points. 
                     // 1) get all points in each direction
@@ -2068,99 +2228,66 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                    // 3) do the usual convolution step 
 
-                   
+                   for (int qi = 0; qi < dom_Nq; ++qi)
+                   {
+                        long posi = DG_star_pos + qi;
+                        DG_star_data[posi] = 0.0;
 
+                       for(int mm = 0; mm < sNp; ++mm)
+                       {
+                           int mm_dir[AMREX_SPACEDIM];
+                            AMREX_D_TERM
+                            (
+                                mm_dir[0] = mm%(sNp_1D);,
+                                mm_dir[1] = ((mm - mm_dir[0])/sNp_1D) % (sNp_1D);, 
+                                mm_dir[2] = ( mm - mm_dir[0] - mm_dir[1]*(sNp_1D) ) / ( (sNp_1D)*(sNp_1D) );
+                            )
 
-
-
-                     
-/////////////////////////////////////////////////////////////////////////////
-                    for (int qi = 0; qi < dom_Nq; ++qi)
-                    {
-                        X_star_fab(i,j,k,qi + ru*Npoints) = 0.0; // initialize
-
-                        // QUADRATURE POINT on reference element
-                        qi_pos = (AMREX_SPACEDIM+1)*qi;
-                        AMREX_D_TERM
-                        (
-                            x[0] = xptr[qi_pos+0];, //x[0] = J[0]*x[0]+cell_m[0];,
-                            x[1] = xptr[qi_pos+1];, //x[1] = J[1]*x[1]+cell_m[1];,
-                            x[2] = xptr[qi_pos+2]; //x[2] = J[2]*x[2]+cell_m[2];
-                        )
-
-                        // go through all the possible neighbors
-                        
-                        for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
+                            for (int j1 = j_low[0]; j1 <= j_up[0]; ++j1 )
                             {
                                 for (int j2 = j_low[1]; j2 <= j_up[1]; ++j2 )
                                 {
                                     for (int j3 = j_low[2]; j3 <= j_up[2]; ++j3)
                                     {
-                                        int temp_i = i + j1;
-                                        int temp_j = j  + j2;
-                                        int temp_k = k + j3;
+                                        int temp_i=0;
+                                        int temp_j=0;
+                                        int temp_k=0;
+                                        int BF_i,BF_j,BF_k;
 
-                                        int temp_etype = eType_fab(temp_i,temp_j,temp_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                                        temp_i = i + j1;
 
-                                        // get DG solution
-                                        // Data structures used to compute the basis functions
-                                        // and the unknown fields
-                                        DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
+                                        temp_j = j  + j2;
 
-                                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                        temp_k = k + j3;
 
-                                        // Get the support of the basis functions
-                                        BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_lo, BF_hi);
+                                        BF_CELL(temp_i, temp_j, temp_k, etype, BF_i, BF_j, BF_k);
 
-                                        // compute the basis functions on [BF_lo, BF_hi] at these quadrature points for each direction. 
-                                        // DG_space_1d_BF_Table_NxL(dom_Nq, sp, all_quadrature points,BF_lo[0], BF_hi[0],BF)
+                                        Real temp_var = X_fab(BF_i,BF_j,BF_k,mm+ru*sNp);
 
-                                        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                        AMREX_D_TERM
+                                        (
+                                            temp_var *= cut_ele_conv_matrix_x[ j1-j_low[0] + mm_dir[0]*Nj[0] + qi*Nj[0]*(sNp_1D)];,
+                                            temp_var *= cut_ele_conv_matrix_y[ j2-j_low[1] + mm_dir[1]*Nj[1] + qi*Nj[1]*(sNp_1D)];,
+                                            temp_var *= cut_ele_conv_matrix_z[ j3-j_low[2] + mm_dir[2]*Nj[2] + qi*Nj[2]*(sNp_1D)];
+                                        )
 
-                                        //BF_CELL(temp_i, temp_j, temp_k, temp_etype, BF_i, BF_j, BF_k);
-                                        //space_BF_pos = space_Dom_BF_pos_fab(temp_i,temp_j,temp_k,DG_DOM_BF_INFO_N_COMP_PER_DOM*dom);
-                                        //BF_ptr = &space_Dom_BF_mem_ptr[space_BF_pos];
-                                        //sol.set_BF_ptrs(BF_ptr);
-                                        //sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
+                                        //X_star_fab(i, j, k, point_iter + ru * Npoints) += temp_var;
+                                        DG_star_data[posi] +=  temp_var;
 
-
-                                        for (int rr = 0; rr < Nr; ++rr)
-                                        {
-                                            Real center_point[AMREX_SPACEDIM];
-                                            AMREX_D_TERM
-                                            (
-                                                center_point[0] = x[0] * 0.5 - (rr-2*sp) + j1;,
-                                                center_point[1] = x[1] * 0.5 - (rr-2*sp) + j2;,
-                                                center_point[2] = x[2] * 0.5 - (rr-2*sp) + j3;
-
-
-                                            )
-
-                                            
-
-
-                                        }
-
-                                        
-                                        
-                                        
                                     }
-                                
+                                    
                                 }
+                                
                             }
 
+                       }
 
+                   }
+                    DG_star_pos += dom_Nq;
 
-
-
-                        
-
-
-
-                    }
-
-
-                }
+                }   
+/////////////////////////////////////////////////////////////////////////////
+                    
                 else
                 {
                     // element is empty
@@ -2174,9 +2301,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         }//endfor MFIter
 
 
-
+        err = ImplicitMesh_PostProcessedEvalErrorNorm(t,iGeom,MatFactory,IBVP,DG_star_pos_fab,DG_star_data);
 
     }
+
+
+
 
 // ERROR EVALUATION ###############################################
     template<typename IBVP_CLASS>
