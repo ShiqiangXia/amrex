@@ -1682,6 +1682,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
     } // end func  Convolution_Postprocessing_OneSideKernel
 
+
+
+
 // ####################################################################
     template<typename IBVP_CLASS>
     Real ImplicitMesh_PostProcessedEvalErrorNorm(const Real & t,

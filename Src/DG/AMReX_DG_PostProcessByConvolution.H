@@ -14,6 +14,7 @@ namespace DG
 
     const Real cr_oneside_1[5] = {1.0/9.0, -19.0/36.0, 11.0/6.0, -19.0/36.0, 1.0/9.0};
     const Real cr_oneside_2[9] = {651657.0/11454080.0, -(26263297.0/77315040.0), 94794683.0/103086720.0, -(2667869.0/1610730.0), 14685479.0/4832190.0, -(2667869.0/1610730.0), 94794683.0/103086720.0, -(26263297.0/77315040.0), 651657.0/11454080.0};
+    const Real cr_oneside_3[13]={726301.0/20455680.0, -(3305063.0/11932480.0),1876575341.0/1933061760.0,-(1985274419.0/966530880.0),11824911607.0/3866123520.0, -(52483121.0/13807584.0),141784865.0/27615168.0, -(52483121.0/13807584.0), 11824911607.0/3866123520.0, -(1985274419.0/966530880.0), 1876575341.0/1933061760.0, -(3305063.0/11932480.0), 726301.0/20455680.0};
 
     void Bspline(Real x, int k, Real & out)
     {
@@ -403,7 +404,7 @@ namespace DG
 
         if (sp == 1) cr = cr_oneside_1 ;
         else if (sp == 2) cr = cr_oneside_2;
-        //else if (sp == 3) cr = cr_oneside_3;
+        else if (sp == 3) cr = cr_oneside_3;
         //else if (sp == 4) cr = cr_oneside_4;
         //else if (sp == 5) cr =cr_oneside_5;
         else
@@ -462,6 +463,8 @@ namespace DG
         
     }
 
+
+// implicit mesh
     void get_num_kernel_support_one_direction(int * kernel_support, const bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support)
     {
         if (kernel_flag[0] && kernel_flag[1])

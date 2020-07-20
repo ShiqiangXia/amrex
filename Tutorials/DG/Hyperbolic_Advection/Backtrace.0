@@ -1,12 +1,16 @@
- 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:163)
+ 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:163)
 
- 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:71)
+ 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:71)
 
- 2: amrex::ParmParse::getarr(char const*, std::vector<int, std::allocator<int> >&, int, int) const (in main2d.gnu.ex) (AMReX_ParmParse.cpp:1239)
+ 2: amrex::FileOpenFailed(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.MPI.ex) (string:1406)
 
- 3: main_main() (in main2d.gnu.ex) (main.cpp:188)
+ 3: amrex::VTK::PrintHeaderFile_VTU(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&) (in main2d.gnu.MPI.ex) (AMReX_VTK_utils.cpp:135)
 
- 4: main (in main2d.gnu.ex) (main.cpp:477)
+ 4: void amrex::DG::DG<1, 1, 1>::Export_VTK<LINADV>(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, std::__1::vector<int, std::__1::allocator<int> > const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, LINADV const&) const (in main2d.gnu.MPI.ex) (vector:456)
 
- 5: start (in libdyld.dylib) + 1
+ 5: main_main() (in main2d.gnu.MPI.ex) (string:1406)
+
+ 6: main (in main2d.gnu.MPI.ex) (main.cpp:477)
+
+ 7: start (in libdyld.dylib) + 1
 

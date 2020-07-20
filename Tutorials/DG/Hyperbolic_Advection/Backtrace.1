@@ -1,32 +1,16 @@
- 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_BLBackTrace.cpp:163)
+ 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:163)
 
- 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_BLBackTrace.cpp:69)
+ 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:71)
 
- 2: amrex::ParallelDescriptor::Abort(int, bool) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_ParallelDescriptor.cpp:232)
+ 2: amrex::FileOpenFailed(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.MPI.ex) (string:1406)
 
- 3: amrex::detail::Assert_host_doit(char const*, char const*, int, char const*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX.cpp:0)
+ 3: amrex::VTK::PrintUnstructuredGridData_VTU(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, unsigned int const&, unsigned int const&, amrex::Vector<double, std::__1::allocator<double> > const&, amrex::Vector<unsigned int, std::__1::allocator<unsigned int> > const&, amrex::Vector<unsigned int, std::__1::allocator<unsigned int> > const&, amrex::Vector<unsigned char, std::__1::allocator<unsigned char> > const&, amrex::Vector<amrex::Vector<int, std::__1::allocator<int> >, std::__1::allocator<amrex::Vector<int, std::__1::allocator<int> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, amrex::Vector<amrex::Vector<double, std::__1::allocator<double> >, std::__1::allocator<amrex::Vector<double, std::__1::allocator<double> > > > const&, amrex::Vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (in main2d.gnu.MPI.ex) (AMReX_VTK_utils.cpp:240)
 
- 4: amrex::Assert(char const*, char const*, int, char const*) (in main2d.gnu.DEBUG.MPI.ex) (AMReX.H:149)
+ 4: void amrex::DG::DG<1, 1, 1>::Export_VTK<LINADV>(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, int const&, int const&, std::__1::vector<int, std::__1::allocator<int> > const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, LINADV const&) const (in main2d.gnu.MPI.ex) (string:1406)
 
- 5: amrex::FabArrayBase::getTileArray(amrex::IntVect const&) const (in main2d.gnu.DEBUG.MPI.ex) (AMReX_FabArrayBase.cpp:1437)
+ 5: main_main() (in main2d.gnu.MPI.ex) (string:1406)
 
- 6: amrex::MFIter::Initialize() (in main2d.gnu.DEBUG.MPI.ex) (AMReX_MFIter.cpp:261)
+ 6: main (in main2d.gnu.MPI.ex) (main.cpp:477)
 
- 7: amrex::MFIter::MFIter(amrex::FabArrayBase const&, bool) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_MFIter.cpp:43)
-
- 8: amrex::MFIter::MFIter(amrex::FabArrayBase const&, bool) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_MFIter.cpp:44)
-
- 9: void amrex::Copy<amrex::FArrayBox, void>(amrex::FabArray<amrex::FArrayBox>&, amrex::FabArray<amrex::FArrayBox> const&, int, int, int, amrex::IntVect const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_FabArrayUtility.H:1481)
-
-10: amrex::MultiFab::Copy(amrex::MultiFab&, amrex::MultiFab const&, int, int, int, int) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_MultiFab.cpp:143)
-
-11: void amrex::DG::RungeKutta<1, 1, 1>::TakeTimeStep_Hyperbolic<LINADV>(int const&, double const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, amrex::MultiFab const&, amrex::MultiFab&, LINADV const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG_RK.H:128)
-
-12: void amrex::DG::DG<1, 1, 1>::TakeTimeStep_Hyperbolic<LINADV>(double const&, double const&, amrex::DG::ImplicitGeometry<1, 1> const&, amrex::DG::MatrixFactory<1, 1> const&, LINADV const&) (in main2d.gnu.DEBUG.MPI.ex) (AMReX_DG.H:500)
-
-13: main_main() (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:387)
-
-14: main (in main2d.gnu.DEBUG.MPI.ex) (main.cpp:475)
-
-15: start (in libdyld.dylib) + 1
+ 7: start (in libdyld.dylib) + 1
 
