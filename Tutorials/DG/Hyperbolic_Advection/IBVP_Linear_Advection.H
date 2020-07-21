@@ -106,6 +106,7 @@ public:
         amrex::Real V[AMREX_SPACEDIM];
         this->F_V(t, x, V);
         const amrex::Real y[AMREX_SPACEDIM] = {AMREX_D_DECL(x[0]-t*V[0], x[1]-t*V[1], x[2]-t*V[2])};
+        // here we didn't enfore the periodic boundary condtions.
         U[0] = this->F_U0(0, y); 
     }
     // ================================================================
@@ -132,7 +133,7 @@ public:
         AMREX_D_TERM
         (
             V[0] = 1;,
-            V[1] = 0;,
+            V[1] = 1;,
             V[2] = 0.0;
         )
 #endif
@@ -313,9 +314,13 @@ public:
                amrex::Real * F) const
     {
         // PARAMETERS
+        amrex::Real Ue[N_U];
+        F_EXACT(t,x,Ue);
+
+
 
         // FIELD EXPRESSIONS
-        F[0] = U[0];
+        F[0] = U[0]- Ue[0] ;
     }
     // ================================================================
 };
