@@ -635,6 +635,12 @@ public:
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
+                        /*
+                        if(j==1)
+                        {
+                            Print()<<"i: "<<i<<" j: "<<j<<" k: "<<k<<"ue-uh: "<<Ue[ru]<< "  at: x="<<x[0]<<" y="<<x[1]<<std::endl;
+                        }
+                        */
                         integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;
                     }
@@ -694,11 +700,20 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const Gpu::ManagedVector<int> cell_base_conn = Get_VTK_BaseCell_Connectivity(cell_e);
         const int * cell_base_conn_ptr = cell_base_conn.data();
 
+        /*
         AMREX_D_TERM
         (
             Real const * dom_XI1g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI1g.data() : MatFactory.uHyperrect.dom_XI1g.data();,
             Real const * dom_XI2g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI2g.data() : MatFactory.uHyperrect.dom_XI2g.data();,
             Real const * dom_XI3g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI3g.data() : MatFactory.uHyperrect.dom_XI3g.data();
+        )
+        */
+
+        AMREX_D_TERM // I need quadrature points becuase the post-processed solution is only evalued at GQ points
+        (
+            Real const * dom_XI1g_ptr = iGeom.uHyperrect.dom_XI1q.data() ;,
+            Real const * dom_XI2g_ptr = iGeom.uHyperrect.dom_XI2q.data() ;,
+            Real const * dom_XI3g_ptr = iGeom.uHyperrect.dom_XI3q.data() ;
         )
 
         // DG
@@ -885,6 +900,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         sol.set_support(BF_lo, BF_hi);
                         sol._eval_BF_table_(x);
 
+                        
+
                         for (int ru = 0; ru < N_U; ++ru)
                         {
                             sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
@@ -901,6 +918,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 dUhdx3[ru] = grad[2];
                             );
                         }
+                        
                         
                         IBVP.F_SOL(t, x,
                                    PHIh, AMREX_D_DECL(dPHIhdx1, dPHIhdx2, dPHIhdx3),
@@ -2461,6 +2479,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         err_fab(i,j,k,0) += integrand*w;
                         
                         Ue[ru] -= Uh[ru];
+                        /*
+                        if(j==1)
+                        {
+                            Print()<<"i: "<<i<<" j: "<<j<<" k: "<<k<<" ue-uh: "<<Ue[ru]<< "at: x="<<x[0]<<" y="<<x[1]<<std::endl;
+                        }
+                        */
                         //integrand = std::abs(Ue[ru]);
                         integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;

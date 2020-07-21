@@ -433,20 +433,18 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
         err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
         amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
 
-
-        // WRITE TO OUTPUT
-        if (inputs.plot_int > 0 && time == inputs.time.T)
+    }
+    // WRITE TO OUTPUT
+    amrex::Print()<<"time: "<<time<<"final time T: " <<inputs.time.T<<"plot_int:"<<inputs.plot_int <<std::endl;
+    if (inputs.plot_int > 0)// && time == inputs.time.T)
         {
+            amrex::Print()<<"text"<<std::endl;
             std::vector<int> field_domains = {0};
             std::vector<std::string> field_names = {"phi"};
+            amrex::Print()<<"text"<<std::endl;
 
             dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
         }
-
-
-        
-
-    }
 
 
 
