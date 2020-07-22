@@ -596,6 +596,7 @@ namespace DG
                     if (element_is_entire)
                     {   
                         // entire cell: we want only use all neighbors that are entire 
+
                         const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
                         if (nbr_is_entire)
                         {
@@ -615,7 +616,7 @@ namespace DG
                         // partial cell, we want to use all avaibale neightbors
                         const bool nbr_is_small = (nbr_etype%10 == DG_ELM_TYPE_SMALL);
                         const bool nbr_is_empty = (nbr_etype == DG_ELM_TYPE_EMPTY);
-                        if (nbr_is_small || nbr_is_empty)
+                        if (nbr_is_small || nbr_is_empty)//????
                         {
                             kernel_flag[b] = false;
                             break;
@@ -649,7 +650,7 @@ namespace DG
 
         int nbr_i, nbr_j, nbr_k;
         int nbr_etype;
-        int quadrant_cout = 0;
+        
         bool quadrant_check[4];
 
         nbr_k = k;
@@ -670,7 +671,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[0] = false;
-                        quadrant_cout += 1;
+                        
                         break;
                     }
                 }
@@ -694,7 +695,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[1] = false;
-                        quadrant_cout += 1;
+                        
                         break;
                     }
                 }
@@ -718,7 +719,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[2] = false;
-                        quadrant_cout += 1;
+                        
                         break;
                     }
                 }
@@ -742,7 +743,7 @@ namespace DG
                     if (nbr_etype%10 != DG_ELM_TYPE_ENTIRE)
                     {  
                         quadrant_check[3] = false;
-                        quadrant_cout += 1;
+                        
                         break;
                     }
                 }
@@ -753,40 +754,25 @@ namespace DG
         }
 
         // update kernel_flag
-        bool simple_flag = false;
-        if (kernel_flag[0] && kernel_flag[1] && kernel_flag[2] && kernel_flag[3])
-        { 
-            // symmetric kernel check
-            if (quadrant_cout == 1 )
-            {
-                simple_flag = true;
+        
+        int temp_cout=0;
 
-            }
-            else if (quadrant_cout == 2)
-            {
-                if ( quadrant_check[0]==quadrant_check[2])
-                {
-                    kernel_flag[0]= false;
-                    kernel_flag[1]= false;
-                    kernel_flag[2]= false;
-                    kernel_flag[3]= false;
+        for (ii = 0; ii<4; ii++)
+        {
+            if (quadrant_check[ii]) temp_cout+=1;
+        }
 
-                }
-                else
-                {
-                    if (quadrant_check[0] == false && quadrant_check[1] == false ) kernel_flag[3]= false;
-                    if (quadrant_check[1] == false && quadrant_check[2] == false ) kernel_flag[0]= false;
-                    if (quadrant_check[2] == false && quadrant_check[3] == false ) kernel_flag[2]= false;
-                    if (quadrant_check[3] == false && quadrant_check[0] == false ) kernel_flag[1]= false;
-                    
-                }
-                
+        if (temp_cout == 0)
+        {
+            kernel_flag[0]= false;
+            kernel_flag[1]= false;
+            kernel_flag[2]= false;
+            kernel_flag[3]= false;
 
-
-            }
-            else if (quadrant_cout == 3)
-            {
-                if (quadrant_check[0])
+        }
+        else if (temp_cout == 1)
+        {
+            if (quadrant_check[0])
                 {
                     kernel_flag[0] = false;
                     kernel_flag[2] = false;
@@ -807,55 +793,76 @@ namespace DG
                     kernel_flag[3] = false;
                 }
 
-            }
-            else if (quadrant_cout == 4)
+        }
+        else if (temp_cout == 2)
+        {
+            // if diagonal
+            if ( quadrant_check[0]==quadrant_check[2])
+            // manually decide to use which one side kernel
+                    if (quadrant_check[0] == false)
+                    {
+                        //            |3
+                        //       X    |      X
+                        //    0------[ ]----------1
+                        //       X    |
+                        //            |2
+                        kernel_flag[0]= false;
+                        kernel_flag[3]= false;
+
+                    }
+                    else
+                    {
+                        //            |3
+                        //       X    |      
+                        //    0------[ ]----------1
+                        //       X    |      X
+                        //            |2
+                        kernel_flag[0]= false;
+                        kernel_flag[2]= false;
+                        
+                    }
+            else
             {
-                kernel_flag[0]= false;
-                kernel_flag[1]= false;
-                kernel_flag[2]= false;
-                kernel_flag[3]= false;
+                if (quadrant_check[0] == false && quadrant_check[1] == false ) kernel_flag[3]= false;
+                if (quadrant_check[1] == false && quadrant_check[2] == false ) kernel_flag[0]= false;
+                if (quadrant_check[2] == false && quadrant_check[3] == false ) kernel_flag[2]= false;
+                if (quadrant_check[3] == false && quadrant_check[0] == false ) kernel_flag[1]= false;
 
             }
+
+        }
+        else if (temp_cout == 3)
+        {
+            if (quadrant_check[0]==false)
+                {
+                    kernel_flag[3] = false;
+                    
+                }
+                if (quadrant_check[1]==false)
+                {
+                    kernel_flag[0] = false;
+                   
+                }
+                if (quadrant_check[2]==false)
+                {
+                    kernel_flag[2] = false;
+                    
+                }
+                if (quadrant_check[3]==false)
+                {
+                    kernel_flag[1] = false;
+                    
+                }
 
         }
         else
         {
-            // one-side kernel (or mix kernel)
-            simple_flag = true;
+            // do nothing
             
         }
 
-        if (simple_flag)
-        {
-            if(quadrant_check[0] == false)
-            {
-                kernel_flag[1] = false;
-                kernel_flag[3] = false;
-
-            }
-
-            if(quadrant_check[1] == false)
-            {
-                kernel_flag[0] = false;
-                kernel_flag[3] = false;
-
-            }
-
-            if(quadrant_check[2] == false)
-            {
-                kernel_flag[0] = false;
-                kernel_flag[2] = false;
-
-            }
-
-            if(quadrant_check[3] == false)
-            {
-                kernel_flag[1] = false;
-                kernel_flag[2] = false;
-
-            }
-        }
         
+
 
 #endif
 

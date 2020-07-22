@@ -1914,7 +1914,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
         longMultiFab DG_star_pos_fab;
         Gpu::HostVector<Real> DG_star_data;
-        DG_star_data.resize(5);
+        //DG_star_data.resize(5);
         long DG_star_pos;
 
         DG_star_pos = 0L;
@@ -1987,6 +1987,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 
                 // determine to use symmetric kernel or one-side kernel
+
                  int j_low[3] = {0};
                  int j_up[3] = {0};
                  int  Nj[3] = {0};
@@ -2107,13 +2108,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 //===================================================
                 // Post-processing by convolution
                 DG_star_position_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom) = DG_star_pos;
+                
                 // Entire element
+                // assume we can always find entire neighbors (in some direction) so that we can post-process in the usuall way. 
                 if (etype%10 == DG_ELM_TYPE_ENTIRE )
                 {
                     // use the regular kernel to do the postprocessing
                     // loop all points in a cell (i,j,k)
                 
-                    DG_star_data.resize(DG_star_pos+Npoints);
+                    DG_star_data.resize(DG_star_pos+Npoints);//entire element has the same gauss quadrature points.
                     //DG_star_data.resize(5);
 
                     for (int point_iter=0; point_iter < Npoints; ++point_iter)
@@ -2184,6 +2187,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     DG_star_pos += Npoints; // update DG_star_pos
 
                 }
+                 
                  // Partial element
                 else if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL)
                 {
@@ -2195,14 +2199,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     
 
                     // QUADRATURE INFO
-                    int dom_Nq;
+                    int dom_Nq; // # of quadrature points varies for partial elements
                     long eDomQuad_pos, qi_pos, space_BF_pos;
                     const Real * xptr;
                     const Real * BF_ptr;
 
                     dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
-                    eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
-                    xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+                    eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom); // position of quadrature points
+                    xptr =  &eDomQuad_mem_ptr[eDomQuad_pos]; // access quadrature points (based on Quad position)
 
                     DG_star_data.resize(DG_star_pos+dom_Nq);
 
@@ -2218,6 +2222,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     // 3) do the usual convolution step 
                     // EXCEPT that the DG coefficients are not X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
                     // BUT X_fab(BF_i,BF_j,BF_k,......)
+
+
 
                     // 1) get all points in each direction
 
@@ -2292,8 +2298,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                         temp_j = j  + j2;
 
                                         temp_k = k + j3;
+                                        
+                                        const int ngb_etype = eType_fab(temp_i,temp_j,temp_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
 
-                                        BF_CELL(temp_i, temp_j, temp_k, etype, BF_i, BF_j, BF_k);
+                                        BF_CELL(temp_i, temp_j, temp_k, ngb_etype, BF_i, BF_j, BF_k);
 
                                         Real temp_var = X_fab(BF_i,BF_j,BF_k,mm+ru*sNp);
 
