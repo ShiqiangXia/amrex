@@ -84,6 +84,10 @@ struct dG_struct
     int space_q, time_q;
     std::string use_slope_limiter;
     bool use_slope_limiter_flag;
+    //SX ========
+    std::string post_processing_by_convolution;
+    bool post_processing_by_convolution_flag;
+    //SX ========
 
     public:
     dG_struct()
@@ -91,7 +95,10 @@ struct dG_struct
     phi_space_p(-1),
     space_p(-1),
     time_p(-1),
-    use_slope_limiter_flag(false)
+    use_slope_limiter_flag(false),
+    //SX ========
+    post_processing_by_convolution_flag(false)
+    //SX ========
     {}
 };
 // --------------------------------------------------------------------
@@ -187,7 +194,7 @@ amrex::Print() << "#############################################################
         pp_dG.get("space_p", inputs.dG.space_p);
         pp_dG.get("time_p", inputs.dG.time_p);
 
-        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+2);
+        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+3);
 
         pp_dG.query("use_slope_limiter", inputs.dG.use_slope_limiter);
         if      (inputs.dG.use_slope_limiter == "true")  inputs.dG.use_slope_limiter_flag = true;
@@ -196,6 +203,13 @@ amrex::Print() << "#############################################################
 
         // POST-PROCESSING INFO ---------------------------------------
         pp.query("plot_int", inputs.plot_int);
+
+        //SX ========
+        pp.query("post_processing_by_convolution", inputs.dG.post_processing_by_convolution);
+        if (inputs.dG.post_processing_by_convolution == "true") inputs.dG.post_processing_by_convolution_flag = true;
+        else inputs.dG.post_processing_by_convolution_flag = false;
+        //SX ========
+
         // ------------------------------------------------------------
         
     }
@@ -325,6 +339,7 @@ amrex::Print() << "#############################################################
     MatFactory.Eval(iGeom);
     dG.SetICs(iGeom, MatFactory, LinAdv);
 
+    
     // WRITE TO OUTPUT
     if (inputs.plot_int > 0)
     {
@@ -332,6 +347,7 @@ amrex::Print() << "#############################################################
         amrex::Real time = 0.0;
         std::vector<int> field_domains = {0, 1};
         std::vector<std::string> field_names = {"U0", "U1"};
+        amrex::Print()<<"test"<<std::endl;
 
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, inputs.mesh.n_time_steps);
         dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
@@ -387,6 +403,26 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
 
     }
     // ----------------------------------------------------------------
+
+    //SX ========
+    // Post-prrocessing ==============================================
+    // Shiqiang Xia 05/15/2020
+
+    if (inputs.dG.post_processing_by_convolution_flag)
+    {
+        // post-process the dG solution by convolution filtering
+          //dG.Convolution_Postprocessing(iGeom,MatFactory);
+        //dG.Convolution_Postprocessing_OneSideKernel(iGeom,MatFactory);
+        dG.Convolution_Postprocessing_ImplicitMesh_OneSideKernel(inputs.time.T, iGeom, MatFactory, LinAdv);
+
+        amrex::Real err2;
+        amrex::Print()<<"TEST~~~~~"<<std::endl;
+
+        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
+        amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
+
+    }
+
 
 amrex::Print() << "# END OF THE ANALYSIS                                                  " << std::endl;
     // ================================================================

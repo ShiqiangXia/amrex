@@ -906,9 +906,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         {
                             sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
 
-                            //Uh[ru] = sol._eval_unsafe_();
+                            Uh[ru] = sol._eval_unsafe_();
                             
-                            Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+                            //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
                     
                             sol._eval_grad_unsafe_(grad);
                             AMREX_D_TERM
