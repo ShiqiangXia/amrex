@@ -424,8 +424,8 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
     {
         // post-process the dG solution by convolution filtering
         
-          dG.Convolution_Postprocessing(iGeom,MatFactory);
-        //dG.Convolution_Postprocessing_OneSideKernel(iGeom,MatFactory);
+          //dG.Convolution_Postprocessing(iGeom,MatFactory);
+        dG.Convolution_Postprocessing_OneSideKernel(iGeom,MatFactory);
 
         amrex::Real err2;
         amrex::Print()<<"TEST~~~~~"<<std::endl;
@@ -438,10 +438,10 @@ amrex::Print() << "| DG Error: " << std::scientific << std::setprecision(5) << s
     amrex::Print()<<"time: "<<time<<"final time T: " <<inputs.time.T<<"plot_int:"<<inputs.plot_int <<std::endl;
     if (inputs.plot_int > 0)// && time == inputs.time.T)
         {
-            amrex::Print()<<"text"<<std::endl;
+            
             std::vector<int> field_domains = {0};
             std::vector<std::string> field_names = {"phi"};
-            amrex::Print()<<"text"<<std::endl;
+            
 
             dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
         }
