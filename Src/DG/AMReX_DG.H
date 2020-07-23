@@ -1881,6 +1881,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
 
         const GpuArray<Real, AMREX_SPACEDIM> iJ = iGeom._iJ;
+        const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
+        const GpuArray<Real, AMREX_SPACEDIM> dx = iGeom._dx;
 
         // 1D Quadrature points on the reference unithyperrectangle
         // make sure sq >= sp_star
@@ -1972,9 +1974,13 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 const int dom = IBVP.F_U2DOM(ru);
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
+                const bool element_is_partial = (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL);
                 int BF_i, BF_j, BF_k;
                 Real x[AMREX_SPACEDIM];
                 int kernel_choice[AMREX_SPACEDIM]; // 0: symmetric kernel;  -1:  left kernel; 1: right kernel
+                // LOCAL PARAMETERS
+                const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
 
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
@@ -1982,9 +1988,38 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES]; // false : if one direction is unavaible
 
+                if (element_is_entire)
+                {
+                    check_avaible_nbrs_IM_one_side_kernel(kernel_dir_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
+                }
+                else if (element_is_partial)
+                {
+                    // we are cheat here for specific problem
+                    Real cr[2] = {0.5,0.5};
+                    
+                    if ( (cell_m[0]-cr[0])>0 )
+                    {
+                        kernel_dir_flag[1] = true;
+                        kernel_dir_flag[0] = false;
+                    }
+                    else
+                    {
+                        kernel_dir_flag[0] = true;
+                        kernel_dir_flag[1] = false;
+                    }
 
-                check_avaible_nbrs_IM_one_side_kernel(kernel_dir_flag, symmetric_kernl_one_side_support,oneside_kernl_one_side_support, domain, eType_fab, i,j,k,ru,dom);
-                
+                    if ((cell_m[1]-cr[1])>0)
+                    {
+                        kernel_dir_flag[3] = true;
+                        kernel_dir_flag[2] = false;
+
+                    }
+                    else
+                    {
+                        kernel_dir_flag[2] = true;
+                        kernel_dir_flag[3] = false;
+                    }
+                }
                 
                 // determine to use symmetric kernel or one-side kernel
 
@@ -2111,7 +2146,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 
                 // Entire element
                 // assume we can always find entire neighbors (in some direction) so that we can post-process in the usuall way. 
-                if (etype%10 == DG_ELM_TYPE_ENTIRE )
+                if (element_is_entire )
                 {
                     // use the regular kernel to do the postprocessing
                     // loop all points in a cell (i,j,k)
@@ -2298,7 +2333,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                         temp_j = j  + j2;
 
                                         temp_k = k + j3;
-                                        
+
                                         const int ngb_etype = eType_fab(temp_i,temp_j,temp_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
 
                                         BF_CELL(temp_i, temp_j, temp_k, ngb_etype, BF_i, BF_j, BF_k);

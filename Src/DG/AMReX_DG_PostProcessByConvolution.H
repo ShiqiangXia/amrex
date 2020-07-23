@@ -520,7 +520,7 @@ namespace DG
 
     void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support, const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
     {
-        
+        // in the code we onlu considered entire element
         
         const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
         const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
@@ -611,6 +611,8 @@ namespace DG
                         }
 
                     }
+
+                    /*
                     if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL) 
                     {
                         // partial cell, we want to use all avaibale neightbors
@@ -632,6 +634,7 @@ namespace DG
 
 
                     }
+                    */
                     
 
                     
