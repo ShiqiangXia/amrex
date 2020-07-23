@@ -2037,6 +2037,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  int j_up[3] = {0};
                  int  Nj[3] = {0};
                  const Real * conv_matrix_1;
+                 const Real * conv_matrix_2;
+                 const Real * conv_matrix_3;
                 
                 if (element_is_entire || element_is_partial)
                 {
@@ -2082,10 +2084,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     }
 
 
-#if (AMREX_SPACEDIM > 1)
-
-                    const Real * conv_matrix_2;
-                    
+#if (AMREX_SPACEDIM > 2)                   
                     if (kernel_dir_flag[2] && kernel_dir_flag[3])
                     {
                         j_low[1] = - symmetric_kernl_one_side_support;
@@ -2117,10 +2116,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     {
                         Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
                     }
-
 #endif
 #if (AMREX_SPACEDIM > 2)
-                    const Real * conv_matrix_3;
+                    
                     if (kernel_dir_flag[4] && kernel_dir_flag[5])
                     {
                         j_low[2] = - symmetric_kernl_one_side_support;
