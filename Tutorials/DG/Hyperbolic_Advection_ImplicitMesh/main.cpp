@@ -351,7 +351,7 @@ amrex::Print() << "#############################################################
         amrex::Print()<<"test"<<std::endl;
 
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, inputs.mesh.n_time_steps);
-        dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
+        //dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
     }
     
     // ================================================================
@@ -404,9 +404,18 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
             dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
         }
         
+        
 
     }
     // ----------------------------------------------------------------
+    /*
+    if (inputs.plot_int > 0 )
+        {
+            std::vector<int> field_domains = {0, 1};
+            std::vector<std::string> field_names = {"U0", "U1"};
+            dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
+        }
+        */
 
     //SX ========
     // Post-prrocessing ==============================================

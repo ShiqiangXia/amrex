@@ -4,7 +4,7 @@
 
  2: _sigtramp (in libsystem_platform.dylib) + 29
 
- 4: main_main() (in main2d.gnu.ex) (main.cpp:340)
+ 4: main_main() (in main2d.gnu.ex) (basic_string.h:187)
 
  5: main (in main2d.gnu.ex) (main.cpp:462)
 

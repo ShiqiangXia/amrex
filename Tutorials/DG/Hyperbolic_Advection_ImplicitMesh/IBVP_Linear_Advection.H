@@ -451,10 +451,13 @@ public:
                amrex::Real * F) const
     {
         // PARAMETERS
+        amrex::Real Ue[N_U];
+        F_EXACT(t,x,Ue);
 
         // FIELD EXPRESSIONS
-        F[0] = U[0];
-        F[1] = U[1];
+        
+        F[0] = U[0];// - Ue[0];
+        F[1] = U[1];// - Ue[1];
     }
     // ================================================================
 };

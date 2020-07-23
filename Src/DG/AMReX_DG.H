@@ -822,7 +822,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<Real const> const & PHI_fab = iGeom.PHI.array(mfi);
             Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
             Array4<Real const> const & X_fab = this->X_new.array(mfi);
-            Array4<Real const> const & X_star_fab = this->X_star.array(mfi);
+            //Array4<Real const> const & X_star_fab = this->X_star.array(mfi);
 
             Array4<long const> const & grid_info_fab = grid_info.array(mfi);
             Array4<long const> const & fields_info_fab = fields_info.array(mfi);
