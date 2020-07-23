@@ -760,7 +760,7 @@ namespace DG
         
         int temp_cout=0;
 
-        for (ii = 0; ii<4; ii++)
+        for (int ii = 0; ii<4; ii++)
         {
             if (quadrant_check[ii]) temp_cout+=1;
         }

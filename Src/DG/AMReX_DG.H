@@ -1976,6 +1976,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                 const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
                 const bool element_is_partial = (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL);
+                const bool elm_is_empty = (etype == DG_ELM_TYPE_EMPTY);
                 int BF_i, BF_j, BF_k;
                 Real x[AMREX_SPACEDIM];
                 int kernel_choice[AMREX_SPACEDIM]; // 0: symmetric kernel;  -1:  left kernel; 1: right kernel
@@ -1994,9 +1995,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 }
                 else if (element_is_partial)
                 {
+                    // partial elements alway use one side kernel;
                     // we are cheat here for specific problem
                     Real cr[2] = {0.5,0.5};
-                    
+
                     if ( (cell_m[0]-cr[0])>0 )
                     {
                         kernel_dir_flag[1] = true;
@@ -2020,6 +2022,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         kernel_dir_flag[3] = false;
                     }
                 }
+                else
+                {
+                    for( int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
+                    {
+                        kernel_dir_flag[b] = false;
+                    }
+
+                }
                 
                 // determine to use symmetric kernel or one-side kernel
 
@@ -2028,117 +2038,122 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                  int  Nj[3] = {0};
                  const Real * conv_matrix_1;
                 
+                if (element_is_entire || element_is_partial)
+                {
 
-                 if (kernel_dir_flag[0] && kernel_dir_flag[1])
-                 {
-                     // use symmetric kernel (have enough neighbors on both sides)
-                     j_low[0] = - symmetric_kernl_one_side_support;
-                     j_up[0] = symmetric_kernl_one_side_support;
-                     Nj[0] = Nj_1D;
-                     kernel_choice[0] = 0;
-                     
-                     conv_matrix_1 = Conv_matrix_sym.data();
-                     //conv_matrix_1 = Conv_matrix_sym;
+                    if (kernel_dir_flag[0] && kernel_dir_flag[1])
+                    {
+                        // use symmetric kernel (have enough neighbors on both sides)
+                        j_low[0] = - symmetric_kernl_one_side_support;
+                        j_up[0] = symmetric_kernl_one_side_support;
+                        Nj[0] = Nj_1D;
+                        kernel_choice[0] = 0;
+                        
+                        conv_matrix_1 = Conv_matrix_sym.data();
+                        //conv_matrix_1 = Conv_matrix_sym;
 
-                 }
-                 else if (kernel_dir_flag[0])
-                 {
-                     // use left-side kernel (not enough neighbors on the right )
-                     j_low[0] = -oneside_kernl_one_side_support;
-                     j_up[0] = 0;
-                     Nj[0] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[0] = -1;
-                     
-                     conv_matrix_1 = Conv_matrix_Left.data();
-                     
-                 }
-                 else if (kernel_dir_flag[1])
-                 {
-                     // use right-side kernel (not enough neigbors on the left)
-                     j_low[0]= 0;
-                     j_up[0] = oneside_kernl_one_side_support;
-                     Nj[0] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[0] = 1;
-                     
-                     conv_matrix_1 = Conv_matrix_Right.data();
-                     
-                 }
-                 else
-                 {
-                     // not enough neighbors on both sides. This is not what we want, refine the mesh
-                     Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<std::endl;
-                 }
+                    }
+                    else if (kernel_dir_flag[0])
+                    {
+                        // use left-side kernel (not enough neighbors on the right )
+                        j_low[0] = -oneside_kernl_one_side_support;
+                        j_up[0] = 0;
+                        Nj[0] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[0] = -1;
+                        
+                        conv_matrix_1 = Conv_matrix_Left.data();
+                        
+                    }
+                    else if (kernel_dir_flag[1])
+                    {
+                        // use right-side kernel (not enough neigbors on the left)
+                        j_low[0]= 0;
+                        j_up[0] = oneside_kernl_one_side_support;
+                        Nj[0] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[0] = 1;
+                        
+                        conv_matrix_1 = Conv_matrix_Right.data();
+                        
+                    }
+                    else
+                    {
+                        // not enough neighbors on both sides. This is not what we want, refine the mesh
+                        Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<std::endl;
+                    }
 
 
 #if (AMREX_SPACEDIM > 1)
-                const Real * conv_matrix_2;
-                
-                if (kernel_dir_flag[2] && kernel_dir_flag[3])
-                 {
-                     j_low[1] = - symmetric_kernl_one_side_support;
-                     j_up[1] = symmetric_kernl_one_side_support;
-                     Nj[1] = Nj_1D;
-                     kernel_choice[1] = 0; 
-                     
-                     conv_matrix_2 = Conv_matrix_sym.data();  
-                 }
-                 else if (kernel_dir_flag[2])
-                 {
-                     j_low[1] = -oneside_kernl_one_side_support;
-                     j_up[1] = 0;
-                     Nj[1] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[1] = -1;
-                     
-                     conv_matrix_2 = Conv_matrix_Left.data();     
-                 }
-                 else if (kernel_dir_flag[3])
-                 {
-                     j_low[1]= 0;
-                     j_up[1] = oneside_kernl_one_side_support;
-                     Nj[1] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[1] = 1;
-                     
-                     conv_matrix_2 = Conv_matrix_Right.data();   
-                 }
-                 else
-                 {
-                     Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
-                 }
+
+                    const Real * conv_matrix_2;
+                    
+                    if (kernel_dir_flag[2] && kernel_dir_flag[3])
+                    {
+                        j_low[1] = - symmetric_kernl_one_side_support;
+                        j_up[1] = symmetric_kernl_one_side_support;
+                        Nj[1] = Nj_1D;
+                        kernel_choice[1] = 0; 
+                        
+                        conv_matrix_2 = Conv_matrix_sym.data();  
+                    }
+                    else if (kernel_dir_flag[2])
+                    {
+                        j_low[1] = -oneside_kernl_one_side_support;
+                        j_up[1] = 0;
+                        Nj[1] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[1] = -1;
+                        
+                        conv_matrix_2 = Conv_matrix_Left.data();     
+                    }
+                    else if (kernel_dir_flag[3])
+                    {
+                        j_low[1]= 0;
+                        j_up[1] = oneside_kernl_one_side_support;
+                        Nj[1] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[1] = 1;
+                        
+                        conv_matrix_2 = Conv_matrix_Right.data();   
+                    }
+                    else
+                    {
+                        Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
+                    }
 
 #endif
 #if (AMREX_SPACEDIM > 2)
-                const Real * conv_matrix_3;
-                if (kernel_dir_flag[4] && kernel_dir_flag[5])
-                 {
-                     j_low[2] = - symmetric_kernl_one_side_support;
-                     j_up[2] = symmetric_kernl_one_side_support;
-                     Nj[2] = Nj_1D;
-                     kernel_choice[2] = 0;
+                    const Real * conv_matrix_3;
+                    if (kernel_dir_flag[4] && kernel_dir_flag[5])
+                    {
+                        j_low[2] = - symmetric_kernl_one_side_support;
+                        j_up[2] = symmetric_kernl_one_side_support;
+                        Nj[2] = Nj_1D;
+                        kernel_choice[2] = 0;
 
-                     conv_matrix_3 = Conv_matrix_sym.data();
-                 }
-                 else if (kernel_dir_flag[4])
-                 {
-                     j_low[2] = -oneside_kernl_one_side_support;
-                     j_up[2] = 0;
-                     Nj[2] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[2] = -1;
+                        conv_matrix_3 = Conv_matrix_sym.data();
+                    }
+                    else if (kernel_dir_flag[4])
+                    {
+                        j_low[2] = -oneside_kernl_one_side_support;
+                        j_up[2] = 0;
+                        Nj[2] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[2] = -1;
 
-                     conv_matrix_3 = Conv_matrix_Left.data();
-                 }
-                 else if (kernel_dir_flag[5])
-                 {
-                     j_low[2]= 0;
-                     j_up[2] = oneside_kernl_one_side_support;
-                     Nj[2] = oneside_kernl_one_side_support + 1;
-                     kernel_choice[2] = 1;
-                     conv_matrix_3 = Conv_matrix_Right.data();
-                 }
-                 else
-                 {
-                     Print()<<"ERROR: not enough elements to post-process in z directions! Refine the mesh"<<std::endl;
-                 }
+                        conv_matrix_3 = Conv_matrix_Left.data();
+                    }
+                    else if (kernel_dir_flag[5])
+                    {
+                        j_low[2]= 0;
+                        j_up[2] = oneside_kernl_one_side_support;
+                        Nj[2] = oneside_kernl_one_side_support + 1;
+                        kernel_choice[2] = 1;
+                        conv_matrix_3 = Conv_matrix_Right.data();
+                    }
+                    else
+                    {
+                        Print()<<"ERROR: not enough elements to post-process in z directions! Refine the mesh"<<std::endl;
+                    }
 #endif
+                }
+
 
                 //===================================================
                 // Post-processing by convolution
@@ -2224,7 +2239,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 }
                  
                  // Partial element
-                else if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL)
+                else if (element_is_partial)
                 {
                     // have to compute the post-processed solution directly 
                     // get Quadrature points for this cell
