@@ -1714,6 +1714,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                        const MatrixFactory<N_PHI, N_DOM> & MatFactory,
                        const IBVP_CLASS & IBVP, longMultiFab & DG_star_pos_fab, Gpu::ManagedVector<Real> & DG_star_data )
     {
+        
         // PROFILING --------------------------------------------------
         BL_PROFILE("DG::EvalErrorNorm(const Real &, const ImplicitGeometry<N_PHI, N_DOM> &, ....)");
         // ------------------------------------------------------------
@@ -1742,18 +1743,26 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         MultiFab error(iGeom.cc_ba, iGeom.dm, 2, 0);
         Real err;
         // ============================================================
-
+        
+       
         // EVAL THE ERROR =============================================
         for (MFIter mfi(error); mfi.isValid(); ++mfi)
         {
+            
             const Box & bx = mfi.validbox();
             
             Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
+            
             Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
+            
             Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
-            Array4<Real const> const & X_fab = this->X_star.array(mfi);
+            
             Array4<long> const & DG_star_position_fab = DG_star_pos_fab.array(mfi);
+            
             Array4<Real> const & err_fab = error.array(mfi);
+            
+
+            
 
             ParallelFor(bx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -1917,7 +1926,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         MultiFab X_DG_temp;
 
         longMultiFab DG_star_pos_fab;
-        Gpu::HostVector<Real> DG_star_data;
+        Gpu::ManagedVector<Real> DG_star_data;
         //DG_star_data.resize(5);
         long DG_star_pos;
 
@@ -1952,12 +1961,17 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         X_DG_temp.FillBoundary(iGeom.geom.periodicity());
 
         
+
+        
        // loop all boxes
         const Box & domain = iGeom.geom.Domain();
+        
 
         for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
         {
             const Box & bx = mfi.validbox();
+            const auto lo = lbound(bx);
+            const auto hi = ubound(bx);
 
             Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
             Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
@@ -1970,8 +1984,16 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             // Array4<Real> const & X_star_fab = this->X_star.array(mfi);
             
             // loop all cells in a box
-            ParallelFor(bx,
-            [&] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            //ParallelFor(bx,
+            //[&] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            /*
+            Print()<<"lo.i: "<< lo.x <<" j: "<< lo.y<< " k: "<< lo.z <<std::endl; 
+            Print()<<"hi.i: "<< hi.x <<" j: "<< hi.y<< " k: "<< hi.z <<std::endl;
+            Print()<<std::endl;
+            */
+            for (int k = lo.z; k <= hi.z; ++k)
+            for (int j = lo.y; j <= hi.y; ++j)
+            for (int i = lo.x; i <= hi.x; ++i)
             {
                 const int ru=0;
                 const int dom = IBVP.F_U2DOM(ru);
@@ -1987,6 +2009,13 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
+                /*
+                if(i==12 && j == 19)
+                {
+                    Print()<<"i= "<<i<<" j= "<<j <<" k"<< k <<" element_is_entire "<< element_is_entire<< " dom "<< dom<<std::endl;
+                    Print()<<"eType_fab(10,19,0,DG_ELM_TYPE_N_COMP_PER_DOM*dom) "<< eType_fab(10,19,0,DG_ELM_TYPE_N_COMP_PER_DOM*dom)<<std::endl;
+                }
+                */
 
                 
                 bool kernel_dir_flag[DG_CELL_N_SPACE_BOUNDARIES]; // false : if one direction is unavaible
@@ -2082,7 +2111,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     else
                     {
                         // not enough neighbors on both sides. This is not what we want, refine the mesh
-                        Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<std::endl;
+                        Print()<<"ERROR: not enough elements to post-process in x directions! Refine the mesh"<<" i=:"<<i <<" j=:"<< j <<" element_is_entire: "<<element_is_entire<<" element_is_partial"<<element_is_partial<<std::endl;
                     }
 
 
@@ -2116,7 +2145,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     }
                     else
                     {
-                        Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<std::endl;
+                        Print()<<"ERROR: not enough elements to post-process in y directions! Refine the mesh"<<" i=:"<<i <<" j=:"<< j<<" element_is_entire: "<<element_is_entire<<" element_is_partial"<<element_is_partial<<std::endl;
                     }
 #endif
 #if (AMREX_SPACEDIM > 2)
@@ -2154,7 +2183,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
                 }
 
-
+                
                 //===================================================
                 // Post-processing by convolution
                 DG_star_position_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom) = DG_star_pos;
@@ -2237,20 +2266,16 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                             }
 
                         } // endfor m  
-                    
-
-                   
-                     
-
                     }// endfor point_iter
 
                     DG_star_pos += Npoints; // update DG_star_pos
+                    
 
                 }
-                 
                  // Partial element
                 else if (element_is_partial)
                 {
+                    
                     // have to compute the post-processed solution directly 
                     // get Quadrature points for this cell
                     // get DG solution
@@ -2263,6 +2288,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     long eDomQuad_pos, qi_pos, space_BF_pos;
                     const Real * xptr;
                     const Real * BF_ptr;
+                    
 
                     dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
                     eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom); // position of quadrature points
@@ -2303,6 +2329,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                     )
 
+                    
+
                     for (int qi = 0; qi < dom_Nq; ++qi)
                     {
                         // QUADRATURE POINT on reference element
@@ -2324,6 +2352,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                        cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_z,i,j,k, kernel_choice[2], cut_ele_points_z,sp,quad_points,quad_weights);
 
                    )
+                   
 
                    // 3) do the usual convolution step 
 
@@ -2385,6 +2414,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                    }
                     DG_star_pos += dom_Nq;
+                    
 
                 }   
 /////////////////////////////////////////////////////////////////////////////
@@ -2397,12 +2427,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                 //===================================================
 
-            }); //end paranell for
-            Gpu::synchronize();
+            }//); //end paranell for
+            //Gpu::synchronize();
         }//endfor MFIter
+
+        // Print()<<"test--end"<<std::endl;
 
 
         err = ImplicitMesh_PostProcessedEvalErrorNorm(t,iGeom,MatFactory,IBVP,DG_star_pos_fab,DG_star_data);
+        
         amrex::Print() << "| Post-processed Error: " << std::scientific << std::setprecision(5) << std::setw(12) << err << std::endl;
 
     }

@@ -521,9 +521,17 @@ namespace DG
     void check_avaible_nbrs_IM_one_side_kernel(bool * kernel_flag, const int & symmetric_kernl_one_side_support, const int & oneside_kernl_one_side_support, const Box & domain, Array4<int const> const & eType_fab, const int & i, const int & j , const int & k,const int & ru,const int & dom )
     {
         // in the code we onlu considered entire element
+        if (i==12 && j ==19)
+        {
+            // Print()<<"check~~~"<<std::endl;
+        }
         
         const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
         const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
+        if (i==12 && j ==19)
+        {
+            // Print()<<"element_is_entire~~~"<<element_is_entire<<std::endl;
+        }
 
         // 1) check avaible directions (away from the boundary)
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
@@ -568,6 +576,13 @@ namespace DG
 #endif 
         }
 
+        if (i==12 && j ==19)
+        {
+            // Print()<<"step 1~~~"<<kernel_flag[0]<<"  "<<kernel_flag[1]<<"  "<<kernel_flag[2]<<"  "<<kernel_flag[3]<<std::endl;
+        }
+
+
+
         // 2) check neighbors on the available directions are entire element (don't go cross the interface).
         //         |
         // -------[ ]----------
@@ -575,6 +590,10 @@ namespace DG
         int num_kernel_support[AMREX_SPACEDIM];
 
         get_num_kernel_support_one_direction(num_kernel_support, kernel_flag, symmetric_kernl_one_side_support, oneside_kernl_one_side_support);
+        if (i==12 && j ==19)
+        {
+            // Print()<<"step 1~~~"<<num_kernel_support[0]<<"  " <<num_kernel_support[1]<<std::endl;
+        }
 
         for (int b = 0; b < DG_CELL_N_SPACE_BOUNDARIES; ++b)
         {
@@ -591,13 +610,29 @@ namespace DG
                 for (int nbr_iter = 0; nbr_iter < num_kernel_support[dir]; ++nbr_iter )
                 {
                     NBR_CELL(tempi, tempj, tempk, b, nbr_i, nbr_j, nbr_k, nbr_b);
+                    /*
+                    if (i==12 && j ==19)
+                    {
+                        Print()<<"step ~~~"<<"b: "<< b <<"  "<<kernel_flag[b]<<" nbr_iter "<<nbr_iter<<std::endl;
+                        Print()<<"tempi "<<tempi<<" tempj"<<tempj<<" tempk"<<tempk<<std::endl;
+                        Print()<<"nbr_i "<<nbr_i<<" nbr_j"<<nbr_j<<" nbr_k"<<nbr_k<< "nbr_etype"<<eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom)<<std::endl;
+                        Print()<<"eType_fab(10,19,0,DG_ELM_TYPE_N_COMP_PER_DOM*dom) "<< eType_fab(10,19,0,DG_ELM_TYPE_N_COMP_PER_DOM*dom)<<std::endl;
+                    }
+                    */
                     nbr_etype = eType_fab(nbr_i,nbr_j,nbr_k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
+
+                    if (i==12 && j ==19)
+                    {
+                        // Print()<<"step ~~~"<<"b: "<< b <<"  "<<kernel_flag[b]<<" nbr_iter "<<nbr_iter<<" tempi "<<tempi <<" tempj "<<tempj<< "tempk "<<tempk<<" nbr_i "<< nbr_i<<" nbr_j "<< nbr_j <<" nbr_k "<< nbr_k<<"  nbr_is_entire "<<nbr_is_entire<<" dom"<<dom<<std::endl;
+                    }
 
                     if (element_is_entire)
                     {   
                         // entire cell: we want only use all neighbors that are entire 
 
-                        const bool nbr_is_entire = (nbr_etype%10 == DG_ELM_TYPE_ENTIRE);
+                        
+
                         if (nbr_is_entire)
                         {
                             tempi = nbr_i;
@@ -606,42 +641,24 @@ namespace DG
                         }
                         else
                         {
-                        kernel_flag[b] = false;
-                        break;
-                        }
-
-                    }
-
-                    /*
-                    if (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL) 
-                    {
-                        // partial cell, we want to use all avaibale neightbors
-                        const bool nbr_is_small = (nbr_etype%10 == DG_ELM_TYPE_SMALL);
-                        const bool nbr_is_empty = (nbr_etype == DG_ELM_TYPE_EMPTY);
-                        if (nbr_is_small || nbr_is_empty)//????
-                        {
                             kernel_flag[b] = false;
                             break;
                         }
-                        else
-                        {
-                            tempi = nbr_i;
-                            tempj = nbr_j;
-                            tempk = nbr_k;
-                            
-                        }
-                        
-
 
                     }
-                    */
-                    
 
-                    
                 }
             }
 
         }
+
+        /*
+
+        if (i==12 && j ==19)
+        {
+            Print()<<"step 1~~~"<<kernel_flag[0]<<"  "<<kernel_flag[1]<<"  "<<kernel_flag[2]<<"  "<<kernel_flag[3]<<std::endl;
+        }
+        */
 
         // 3) check all the neighbors are entire for entire cell
         // 2D : four Quadrants

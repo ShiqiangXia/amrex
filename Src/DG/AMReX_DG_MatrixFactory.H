@@ -20,7 +20,7 @@ struct MatrixFactory
 {
     // DATA MEMBERS ###################################################
     // CLASS-WIDE PARAMETERS
-    static const int dom_data_ngr = 1;
+    static const int dom_data_ngr = 3;
     static const int bou_data_ngr = 0;
     
     static const int Dom_BF_pos_n_comp = DG_DOM_BF_INFO_N_COMP_PER_DOM*N_DOM;

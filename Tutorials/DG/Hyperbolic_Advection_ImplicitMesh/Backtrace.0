@@ -1,12 +1,12 @@
- 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:163)
+ 0: amrex::BLBackTrace::print_backtrace_info(__sFILE*) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:163)
 
- 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.MPI.ex) (AMReX_BLBackTrace.cpp:71)
+ 1: amrex::BLBackTrace::handler(int) (in main2d.gnu.ex) (AMReX_BLBackTrace.cpp:71)
 
  2: _sigtramp (in libsystem_platform.dylib) + 29
 
- 4: main_main() (in main2d.gnu.MPI.ex) (main.cpp:422)
+ 4: main_main() (in main2d.gnu.ex) (main.cpp:340)
 
- 5: main (in main2d.gnu.MPI.ex) (main.cpp:458)
+ 5: main (in main2d.gnu.ex) (main.cpp:462)
 
  6: start (in libdyld.dylib) + 1
 

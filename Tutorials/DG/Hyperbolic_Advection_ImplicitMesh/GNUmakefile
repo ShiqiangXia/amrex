@@ -10,7 +10,7 @@ DIM = 2
 COMP = gcc
 CXXSTD = c++14 -g
 
-USE_MPI = TRUE
+USE_MPI = FALSE
 
 USE_CUDA = FALSE
 
