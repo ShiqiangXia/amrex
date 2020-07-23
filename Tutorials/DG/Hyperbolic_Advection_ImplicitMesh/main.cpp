@@ -199,6 +199,7 @@ amrex::Print() << "#############################################################
         pp_dG.query("use_slope_limiter", inputs.dG.use_slope_limiter);
         if      (inputs.dG.use_slope_limiter == "true")  inputs.dG.use_slope_limiter_flag = true;
         else inputs.dG.use_slope_limiter_flag = false;
+        pp_dG.query("space_q", inputs.dG.space_q);
         // ------------------------------------------------------------
 
         // POST-PROCESSING INFO ---------------------------------------
