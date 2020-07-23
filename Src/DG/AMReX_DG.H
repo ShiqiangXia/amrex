@@ -585,8 +585,8 @@ public:
                 DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
 
                 // CYCLE OVER THE UNKNOWN FIELDS
-                for (int ru = 0; ru < N_U; ++ru)
-                //for (int ru = 0; ru < 1; ++ru)
+                //for (int ru = 0; ru < N_U; ++ru)
+                for (int ru = 0; ru < 1; ++ru)
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
@@ -1787,7 +1787,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 // DG_mem_sol_space_BFX sol(X_fab, sp, &iJ[0]);
 
                 // CYCLE OVER THE UNKNOWN FIELDS
-                for (int ru = 0; ru < N_U; ++ru)
+                //for (int ru = 0; ru < N_U; ++ru)
+                for (int ru = 0; ru < 1; ++ru)
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
@@ -1830,6 +1831,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         integrand = std::pow(Ue[ru],2.0);
                         err_fab(i,j,k,1) += integrand*w;
                     }
+                    // Print()<<"err_fab(i,j,k,1): "<<err_fab(i,j,k,1)<<" i= "<<i <<" j= "<<j<<std::endl;
                 }
                
             });
@@ -1968,10 +1970,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             // Array4<Real> const & X_star_fab = this->X_star.array(mfi);
             
             // loop all cells in a box
-            ParallelFor(bx,N_U,
-            [&] AMREX_GPU_DEVICE (int i, int j, int k, int ru) noexcept
+            ParallelFor(bx,
+            [&] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                
+                const int ru=0;
                 const int dom = IBVP.F_U2DOM(ru);
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                 const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
@@ -2084,7 +2086,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     }
 
 
-#if (AMREX_SPACEDIM > 2)                   
+#if (AMREX_SPACEDIM > 1)                   
                     if (kernel_dir_flag[2] && kernel_dir_flag[3])
                     {
                         j_low[1] = - symmetric_kernl_one_side_support;
@@ -2203,14 +2205,20 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                         int temp_j=0;
                                         int temp_k=0;
 
-                                        
-                                        temp_i = i + j1;
-
+                                        temp_i = i  + j1;
                                         temp_j = j  + j2;
-
                                         temp_k = k + j3;
 
                                         Real temp_var = X_fab(temp_i,temp_j,temp_k,mm+ru*sNp);
+
+                                        /*
+                                        if (point_iter == 0 && mm == 0  && i==0 && j==0) 
+                                        {
+                                            Print()<<"DG_star_data: "<<temp_var<<" i= "<<i<<" j="<<j<<" temp_i =  "<<temp_i <<" temp_j= "<<temp_j<<std::endl;
+                                            Print()<<" j_low[0] "<<j_low[0]<<" j_up[0] "<<j_up[0]<<" j_low[1] "<<j_low[1]<<" j_up[1] "<<j_up[1]<<std::endl;
+
+                                        }
+                                        */
 
                                         AMREX_D_TERM
                                         (
@@ -2228,7 +2236,11 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                 
                             }
 
-                        } // endfor m    
+                        } // endfor m  
+                    
+
+                   
+                     
 
                     }// endfor point_iter
 
@@ -2391,6 +2403,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 
         err = ImplicitMesh_PostProcessedEvalErrorNorm(t,iGeom,MatFactory,IBVP,DG_star_pos_fab,DG_star_data);
+        amrex::Print() << "| Post-processed Error: " << std::scientific << std::setprecision(5) << std::setw(12) << err << std::endl;
 
     }
 

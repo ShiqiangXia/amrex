@@ -406,20 +406,21 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
 
     //SX ========
     // Post-prrocessing ==============================================
-    // Shiqiang Xia 05/15/2020
+    
 
     if (inputs.dG.post_processing_by_convolution_flag)
     {
+        amrex::Print()<<"Start postprocessing~~~~~"<<std::endl;
         // post-process the dG solution by convolution filtering
           //dG.Convolution_Postprocessing(iGeom,MatFactory);
         //dG.Convolution_Postprocessing_OneSideKernel(iGeom,MatFactory);
         dG.Convolution_Postprocessing_ImplicitMesh_OneSideKernel(inputs.time.T, iGeom, MatFactory, LinAdv);
 
-        amrex::Real err2;
-        amrex::Print()<<"TEST~~~~~"<<std::endl;
+        //amrex::Real err2;
+        //amrex::Print()<<"TEST~~~~~"<<std::endl;
 
-        err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
-        amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
+        //err2 = dG.PostProcessedEvalErrorNorm(time,iGeom, MatFactory, LinAdv);
+        //amrex::Print() << "| Postprocessed Error 2: " << std::scientific << std::setprecision(5) << std::setw(12) << err2 << std::endl;
 
     }
 

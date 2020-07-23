@@ -4,8 +4,8 @@
 // NUMBER OF DISTANCE FUNCTIONS/DOMAINS/UNKNOWN FIELDS
 #define N_PHI 3
 #define N_DOM 2
-// #define N_U 2
-#define N_U 1
+#define N_U 2
+//#define N_U 1
 // ---------------------------------------------------
 
 // PDES PARAMETERS ----------------------------------------------------
@@ -142,8 +142,8 @@ public:
     {
         const int DOM[N_U] =
         {
-            0//,
-            //1
+            0,
+            1
         };
 
         return DOM[u];
