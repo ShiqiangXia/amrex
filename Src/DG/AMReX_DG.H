@@ -700,14 +700,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const Gpu::ManagedVector<int> cell_base_conn = Get_VTK_BaseCell_Connectivity(cell_e);
         const int * cell_base_conn_ptr = cell_base_conn.data();
 
-        /*
+        
         AMREX_D_TERM
         (
             Real const * dom_XI1g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI1g.data() : MatFactory.uHyperrect.dom_XI1g.data();,
             Real const * dom_XI2g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI2g.data() : MatFactory.uHyperrect.dom_XI2g.data();,
             Real const * dom_XI3g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI3g.data() : MatFactory.uHyperrect.dom_XI3g.data();
         )
-        */
+        
+       /*
 
         AMREX_D_TERM // I need quadrature points becuase the post-processed solution is only evalued at GQ points
         (
@@ -715,10 +716,13 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Real const * dom_XI2g_ptr = iGeom.uHyperrect.dom_XI2q.data() ;,
             Real const * dom_XI3g_ptr = iGeom.uHyperrect.dom_XI3q.data() ;
         )
+        */
 
         // DG
         const int phi_p = iGeom.uHyperrect.p;
         const int space_sol_p = MatFactory.space_p;
+
+        const int export_flag = 0;
 
         // DOMAINS AND FIELDS
         const int n_requested_fields = field_domains.size();
@@ -824,6 +828,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<Real const> const & X_fab = this->X_new.array(mfi);
             //Array4<Real const> const & X_star_fab = this->X_star.array(mfi);
 
+            
+
             Array4<long const> const & grid_info_fab = grid_info.array(mfi);
             Array4<long const> const & fields_info_fab = fields_info.array(mfi);
 
@@ -906,9 +912,19 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         {
                             sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
 
-                            Uh[ru] = sol._eval_unsafe_();
                             
-                            //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+                            if (export_flag == 1)
+                            {
+                                //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+
+                            }
+                            else
+                            {
+                                Uh[ru] = sol._eval_unsafe_();
+
+                            }
+                            
+                        
                     
                             sol._eval_grad_unsafe_(grad);
                             AMREX_D_TERM
