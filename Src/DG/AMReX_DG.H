@@ -700,15 +700,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const Gpu::ManagedVector<int> cell_base_conn = Get_VTK_BaseCell_Connectivity(cell_e);
         const int * cell_base_conn_ptr = cell_base_conn.data();
 
-        
+        /*
         AMREX_D_TERM
         (
             Real const * dom_XI1g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI1g.data() : MatFactory.uHyperrect.dom_XI1g.data();,
             Real const * dom_XI2g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI2g.data() : MatFactory.uHyperrect.dom_XI2g.data();,
             Real const * dom_XI3g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI3g.data() : MatFactory.uHyperrect.dom_XI3g.data();
         )
-        
-       /*
+        */
+       
 
         AMREX_D_TERM // I need quadrature points becuase the post-processed solution is only evalued at GQ points
         (
@@ -716,7 +716,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Real const * dom_XI2g_ptr = iGeom.uHyperrect.dom_XI2q.data() ;,
             Real const * dom_XI3g_ptr = iGeom.uHyperrect.dom_XI3q.data() ;
         )
-        */
+        
 
         // DG
         const int phi_p = iGeom.uHyperrect.p;

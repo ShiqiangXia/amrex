@@ -194,7 +194,7 @@ amrex::Print() << "#############################################################
         pp_dG.get("space_p", inputs.dG.space_p);
         pp_dG.get("time_p", inputs.dG.time_p);
 
-        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+3);
+        inputs.dG.space_q = std::max(inputs.dG.phi_space_p+2, inputs.dG.space_p+4);
 
         pp_dG.query("use_slope_limiter", inputs.dG.use_slope_limiter);
         if      (inputs.dG.use_slope_limiter == "true")  inputs.dG.use_slope_limiter_flag = true;

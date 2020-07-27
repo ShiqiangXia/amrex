@@ -15,8 +15,8 @@ time.T = 1.0
 
 # SPACE AND TIME DISCRETIZATION #######################################
 
-mesh.n_cells       = 20 20 20
-#mesh.n_cells       = 40 40 40
+#mesh.n_cells       = 20 20 20
+mesh.n_cells       = 40 40 40
 #mesh.n_cells       = 80 80 80
 #mesh.n_cells       = 100 100 100
 #mesh.max_grid_size = 80 80 80
@@ -33,5 +33,5 @@ dG.time_p            = 2
 
 # POST-PROCESSING INFO ################################################
 plot_int = 10
-post_processing_by_convolution = false
+post_processing_by_convolution = true
 #######################################################################
