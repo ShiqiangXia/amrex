@@ -1724,6 +1724,503 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
 
 // ####################################################################
+   // EXPORT DG SOLUTION FOR VTK #####################################
+    template<typename IBVP_CLASS>
+    void Export_VTK_Implicit_mesh_Postprocessing(const std::string & dst_folder,
+                    const std::string & filename_root,
+                    const int & time_id,
+                    const int & time_id_max,
+                    const std::vector<int> & field_domains,
+                    const std::vector<std::string> & field_names,
+                    const Real & t,
+                    const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
+                    const MatrixFactory<N_PHI, N_DOM> & MatFactory,
+                    const IBVP_CLASS & IBVP,
+                    longMultiFab & DG_star_pos_fab,
+                    Gpu::ManagedVector<Real> & DG_star_data) const
+    {
+        // PARAMETERS =================================================
+        const bool vtk_legacy_format = false;
+        const bool vtk_xml_format = true;
+
+        // FILEPATH
+        std::string filepath = GetOutputFilepath(dst_folder, filename_root, time_id, time_id_max)+".vtk";
+
+        // DATE AND TIME
+        const time_t now = time(0);
+        const char * date_time = ctime(&now);
+
+        // GRID
+        const GpuArray<Real, AMREX_SPACEDIM> dx = iGeom._dx;
+        const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
+        const GpuArray<Real, AMREX_SPACEDIM> J = iGeom._J;
+
+        // STANDARD ELEMENT
+        const int cell_dom_Ng = std::max(iGeom.uHyperrect.dom_Ng, MatFactory.uHyperrect.dom_Ng);
+        const int cell_e = std::max(iGeom.uHyperrect.g, MatFactory.uHyperrect.g);
+        const int cell_dom_Ne = AMREX_D_PICK(cell_e, cell_e*cell_e, cell_e*cell_e*cell_e);
+        const int cell_conn_len = AMREX_D_PICK(2, 4, 8)*cell_dom_Ne;
+        const Gpu::ManagedVector<int> cell_base_conn = Get_VTK_BaseCell_Connectivity(cell_e);
+        const int * cell_base_conn_ptr = cell_base_conn.data();
+
+        /*
+        AMREX_D_TERM
+        (
+            Real const * dom_XI1g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI1g.data() : MatFactory.uHyperrect.dom_XI1g.data();,
+            Real const * dom_XI2g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI2g.data() : MatFactory.uHyperrect.dom_XI2g.data();,
+            Real const * dom_XI3g_ptr = (iGeom.uHyperrect.g > MatFactory.uHyperrect.g) ? iGeom.uHyperrect.dom_XI3g.data() : MatFactory.uHyperrect.dom_XI3g.data();
+        )
+        */
+       
+
+        AMREX_D_TERM // I need quadrature points becuase the post-processed solution is only evalued at GQ points
+        (
+            Real const * dom_XI1g_ptr = iGeom.uHyperrect.dom_XI1q.data() ;,
+            Real const * dom_XI2g_ptr = iGeom.uHyperrect.dom_XI2q.data() ;,
+            Real const * dom_XI3g_ptr = iGeom.uHyperrect.dom_XI3q.data() ;
+        )
+        
+
+        // DG
+        const int phi_p = iGeom.uHyperrect.p;
+        const int space_sol_p = MatFactory.space_p;
+
+        
+
+        // DOMAINS AND FIELDS
+        const int n_requested_fields = field_domains.size();
+        const int n_total_fields = n_requested_fields+N_PHI;
+        Gpu::ManagedVector<int> Gpu_field_domains;
+        Gpu_field_domains.resize(n_requested_fields);
+        for (int f = 0; f < n_requested_fields; ++f) Gpu_field_domains[f] = field_domains[f];
+        const int * field_domains_ptr = Gpu_field_domains.data();
+
+        // VTK
+        const int VTK_cell_id = AMREX_D_PICK(3, 9, 12);
+        // ============================================================
+
+        // VARIABLES ==================================================
+        FILE * fp;
+
+        long n_dG_cells;
+        Gpu::ManagedVector<Real> nodes;
+        Gpu::ManagedVector<long> conn;
+
+        long nodes_pos, conn_pos, conn_offset;
+        longMultiFab grid_info(iGeom.cc_ba, iGeom.dm, 3, iGeom.dom_data_ngr);
+
+        // FIELDS
+        Gpu::ManagedVector<Real> fields;
+
+        long fields_pos;
+        longMultiFab fields_info(iGeom.cc_ba, iGeom.dm, 1, iGeom.dom_data_ngr);
+        // ============================================================
+
+        // SOME CHECKS ================================================
+        if (n_total_fields > DG_MAX_N_FIELDS)
+        {
+            std::cout << std::endl;
+            std::cout << "ERROR: AMReX_DG.H - DG::Export_VTK" << std::endl;
+            std::cout << "| The number of requested fields exceeds the number of allowed fields:" << std::endl;
+            std::cout << "| DG_MAX_N_FIELDS = " << DG_MAX_N_FIELDS << std::endl;
+            std::cout << "| n_total_fields = " << n_total_fields << std::endl;
+            std::cout << std::endl;
+            exit(-1);
+        }
+        // ============================================================
+
+        // ALIGN PROCESSORS ==========
+        ParallelDescriptor::Barrier();
+        // ===========================
+
+        // COLLECT INFORMATION ========================================
+        n_dG_cells = 0L;
+        nodes_pos = 0L;
+        conn_pos = 0L;
+        conn_offset = 0L;
+
+        fields_pos = 0L;
+
+        for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.validbox();
+            const auto lo = lbound(bx);
+            const auto hi = ubound(bx);
+            const auto len = length(bx);
+
+            Array4<long> const & grid_info_fab = grid_info.array(mfi);
+            Array4<long> const & fields_info_fab = fields_info.array(mfi);
+
+            n_dG_cells += len.x*len.y*len.z;
+
+            for (int k = lo.z; k <= hi.z; ++k)
+            for (int j = lo.y; j <= hi.y; ++j)
+            for (int i = lo.x; i <= hi.x; ++i)
+            {
+                // UPDATE INFO
+                grid_info_fab(i,j,k,0) = nodes_pos;
+                grid_info_fab(i,j,k,1) = conn_pos;
+                grid_info_fab(i,j,k,2) = conn_offset;
+
+                nodes_pos += cell_dom_Ng*AMREX_SPACEDIM;
+                conn_pos += cell_conn_len;
+                conn_offset += cell_dom_Ng;
+
+                fields_info_fab(i,j,k,0) = fields_pos;
+
+                fields_pos += cell_dom_Ng*n_total_fields;
+            }
+        }
+        // ============================================================
+
+        // COMPUTE OUTPUT DATA ========================================
+        nodes.resize(n_dG_cells*cell_dom_Ng*AMREX_SPACEDIM);
+        conn.resize(n_dG_cells*cell_conn_len);
+        fields.resize(n_dG_cells*cell_dom_Ng*n_total_fields);
+
+        Real * nodes_ptr = nodes.data();
+        long * conn_ptr = conn.data();
+        Real * fields_ptr = fields.data();
+
+        for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.validbox();
+
+            Array4<Real const> const & PHI_fab = iGeom.PHI.array(mfi);
+            Array4<int const> const & eType_fab = iGeom.eType.array(mfi);
+            Array4<Real const> const & X_fab = this->X_new.array(mfi);
+            Array4<long> const & DG_star_position_fab = DG_star_pos_fab.array(mfi);
+            //Array4<Real const> const & X_star_fab = this->X_star.array(mfi);
+
+            
+
+            Array4<long const> const & grid_info_fab = grid_info.array(mfi);
+            Array4<long const> const & fields_info_fab = fields_info.array(mfi);
+
+            ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // LOCAL PARAMETERS
+                const Real cell_lo[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+i*dx[0], prob_lo[1]+j*dx[1], prob_lo[2]+k*dx[2])};
+                const Real cell_hi[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+1)*dx[0], prob_lo[1]+(j+1)*dx[1], prob_lo[2]+(k+1)*dx[2])};
+                const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
+                const long cell_nodes_pos = grid_info_fab(i,j,k,0);
+                const long cell_conn_pos = grid_info_fab(i,j,k,1);
+                const long cell_conn_offset = grid_info_fab(i,j,k,2);
+                const long cell_fields_pos = fields_info_fab(i,j,k,0);
+
+                // LOCAL VARIABLES
+                Real x[AMREX_SPACEDIM], grad[AMREX_SPACEDIM];
+                Real PHIh[N_PHI], Uh[N_U];
+                Real AMREX_D_DECL(dPHIhdx1[N_PHI], dPHIhdx2[N_PHI], dPHIhdx3[N_PHI]);
+                Real AMREX_D_DECL(dUhdx1[N_U], dUhdx2[N_U], dUhdx3[N_U]);
+                Real Fh[DG_MAX_N_FIELDS];
+                int dom, etype;
+                int BF_i, BF_j, BF_k;
+                Real BF_lo[AMREX_SPACEDIM], BF_hi[AMREX_SPACEDIM];
+                long DG_data_pos;
+                const Real * dgptr;
+
+                // Data structures used to compute the distance
+                // functions and the dG solution
+                DG_phi_space_BFX phi(cell_lo, cell_hi, PHI_fab, phi_p, i, j, k, -1);
+                DG_sol_space_BFX sol(X_fab, space_sol_p);
+
+                // UPDATE INFO: NODES AND FIELDS
+                for (int n = 0; n < cell_dom_Ng; ++n)
+                {
+                    // NODES
+                    AMREX_D_TERM
+                    (
+                        x[0] = J[0]*dom_XI1g_ptr[n]+cell_m[0];,
+                        x[1] = J[1]*dom_XI2g_ptr[n]+cell_m[1];,
+                        x[2] = J[2]*dom_XI3g_ptr[n]+cell_m[2];
+                    )
+                    AMREX_D_TERM
+                    (
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*n+0] = x[0];,
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*n+1] = x[1];,
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*n+2] = x[2];
+                    )
+
+                    // FIELDS (DISTANCE FUNCTIONS)
+                    phi._eval_BF_table_(x);
+                    for (int rph = 0; rph < N_PHI; ++rph)
+                    {
+                        phi.set_fab_ptrs(i, j, k, rph);
+
+                        PHIh[rph] = phi._eval_unsafe_();
+
+                        phi._eval_grad_unsafe_(grad);
+                        AMREX_D_TERM
+                        (
+                            dPHIhdx1[rph] = grad[0];,
+                            dPHIhdx2[rph] = grad[1];,
+                            dPHIhdx3[rph] = grad[2];
+                        );
+
+                        fields_ptr[cell_fields_pos+n_total_fields*n+rph] = PHIh[rph];
+                    }
+
+                    // FIELDS
+                    for (int rf = 0; rf < n_requested_fields; ++rf)
+                    {
+                        dom = field_domains_ptr[rf];
+                        etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                        BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_i, BF_j, BF_k, BF_lo, BF_hi);
+
+                        sol.set_support(BF_lo, BF_hi);
+                        sol._eval_BF_table_(x);
+
+                        DG_data_pos = DG_star_position_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                        dgptr = &DG_star_data[DG_data_pos];
+
+                        
+
+                        for (int ru = 0; ru < 1; ++ru)
+                        {
+                            sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
+
+                            //Uh[ru] = sol._eval_unsafe_();
+                            Uh[ru] = dgptr[n];
+                            
+                            //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+
+                            sol._eval_grad_unsafe_(grad);
+                            AMREX_D_TERM
+                            (
+                                dUhdx1[ru] = grad[0];,
+                                dUhdx2[ru] = grad[1];,
+                                dUhdx3[ru] = grad[2];
+                            );
+                        }
+                        
+                        
+                        IBVP.F_SOL(t, x,
+                                   PHIh, AMREX_D_DECL(dPHIhdx1, dPHIhdx2, dPHIhdx3),
+                                   Uh, AMREX_D_DECL(dUhdx1, dUhdx2, dUhdx3),
+                                   Fh);
+
+                        if (etype%10 != DG_ELM_TYPE_ENTIRE )
+                        {
+                            Fh[0]=0.0;
+                            Fh[1]=0.0;
+
+                        }
+
+                        fields_ptr[cell_fields_pos+n_total_fields*n+N_PHI+rf] = Fh[rf];
+                    }
+                }
+
+                // UPDATE INFO: CONNECTIVITY
+                for (int c = 0; c < cell_conn_len; ++c)
+                {
+                    conn_ptr[cell_conn_pos+c] = cell_base_conn_ptr[c]+cell_conn_offset;
+                }
+            });
+            Gpu::synchronize();   
+        }
+        // ============================================================
+
+        // WRITE OUTPUT DATA: LEGACY FORMAT ===========================
+        if (vtk_legacy_format)
+        {
+            // OPEN FILE FOR WRITING --------------------------------------
+            fp = fopen(filepath.c_str(), "w");
+            if (fp != nullptr)
+            {
+                fprintf(fp, "# vtk DataFile Version 2.0\n");
+                fprintf(fp, "VTK mesh file created on %s", date_time);
+                fprintf(fp, "ASCII\n");
+            }
+            else
+            {
+                Print() << "ERROR: AMReX_DG.H - DG::Export_VTK" << std::endl;
+                Print() << "| Unable to open and write: " << filepath << "file" << std::endl;
+                exit(-1);
+            }
+            // ------------------------------------------------------------
+            
+            // WRITE TO FILE: GRID INFORMATION ----------------------------
+            const long grid_n_nodes = n_dG_cells*cell_dom_Ng;
+            const long grid_n_cells = conn.size()/AMREX_D_PICK(2, 4, 8);
+            
+            fprintf(fp, "DATASET UNSTRUCTURED_GRID\n");
+    #if (AMREX_SPACEDIM == 1)
+            // NODES
+            fprintf(fp, "POINTS %lu float\n", grid_n_nodes);
+            for (int n = 0; n < grid_n_nodes; ++n)
+                fprintf(fp, "%+.12f 0.0 0.0\n", nodes[AMREX_SPACEDIM*n]);
+            
+            // CELLS
+            fprintf(fp, "CELLS %lu %lu\n", grid_n_cells, (1+2)*grid_n_cells);
+            for (int n = 0; n < grid_n_cells; ++n)
+                fprintf(fp, "2 %lu %lu\n", conn[2*n], conn[2*n+1]);
+    #endif
+    #if (AMREX_SPACEDIM == 2)
+            // NODES
+            fprintf(fp, "POINTS %lu float\n", grid_n_nodes);
+            for (int n = 0; n < grid_n_nodes; ++n)
+                fprintf(fp, "%+.12f %+.12f 0.0\n", nodes[AMREX_SPACEDIM*n], nodes[AMREX_SPACEDIM*n+1]);
+            
+            // CELLS
+            fprintf(fp, "CELLS %lu %lu\n", grid_n_cells, (1+4)*grid_n_cells);
+            for (int n = 0; n < grid_n_cells; ++n)
+                fprintf(fp, "4 %lu %lu %lu %lu\n", conn[4*n], conn[4*n+1], conn[4*n+2], conn[4*n+3]);
+    #endif
+    #if (AMREX_SPACEDIM == 3)
+            // NODES
+            fprintf(fp, "POINTS %lu float\n", grid_n_nodes);
+            for (int n = 0; n < grid_n_nodes; ++n)
+                fprintf(fp, "%+.12f %+.12f %+.12f\n", nodes[AMREX_SPACEDIM*n], nodes[AMREX_SPACEDIM*n+1], nodes[AMREX_SPACEDIM*n+2]);
+            
+            // CELLS
+            fprintf(fp, "CELLS %lu %lu\n", grid_n_cells, (1+8)*grid_n_cells);
+            for (int n = 0; n < grid_n_cells; ++n)
+                fprintf(fp, "8 %lu %lu %lu %lu %lu %lu %lu %lu\n", conn[8*n], conn[8*n+1], conn[8*n+2], conn[8*n+3],
+                                                                   conn[8*n+4], conn[8*n+5], conn[8*n+6], conn[8*n+7]);
+    #endif
+
+            // CELL TYPES
+            fprintf(fp, "CELL_TYPES %lu\n", grid_n_cells);
+            for (int n = 0; n < grid_n_cells; ++n)
+                fprintf(fp, "%d\n", VTK_cell_id);
+            // ------------------------------------------------------------
+
+            // WRITE TO FILE: FIELDS INFORMATION --------------------------
+            fprintf(fp, "POINT_DATA %lu\n", grid_n_nodes);
+
+            for (int rf = 0; rf < N_PHI; ++rf)
+            {
+                const std::string field_name = "Grid_PHI_"+std::to_string(rf);
+                
+                fprintf(fp, "SCALARS %s float 1\n", field_name.c_str());
+                fprintf(fp, "LOOKUP_TABLE default\n");
+                for (int n = 0; n < grid_n_nodes; ++n)
+                {
+                    fprintf(fp, "%+.12f\n", fields[n_total_fields*n+rf]);
+                }
+            }
+            for (int rf = 0; rf < n_requested_fields; ++rf)
+            {
+                fprintf(fp, "SCALARS %s float 1\n", field_names[rf].c_str());
+                fprintf(fp, "LOOKUP_TABLE default\n");
+                for (int n = 0; n < grid_n_nodes; ++n)
+                {
+                    fprintf(fp, "%+.12f\n", fields[n_total_fields*n+N_PHI+rf]);
+                }
+            }
+            // ------------------------------------------------------------
+
+            // CLOSE FILE
+            fclose(fp);
+            // ----------   
+        }
+        // WRITE OUTPUT DATA: XML FORMAT ==============================
+        else if (vtk_xml_format)
+        {
+            // VARIABLES ----------------------------------------------
+            const long n_nodes = n_dG_cells*cell_dom_Ng;
+            const long n_cells = conn.size()/AMREX_D_PICK(2, 4, 8);
+            const int n_nodal_fields = n_total_fields;
+
+            Vector<VTK::Float_t> VTK_nodes;
+            Vector<VTK::Cell_conn_t> VTK_cell_conn;
+            Vector<VTK::Cell_offs_t> VTK_cell_offset;
+            Vector<VTK::Cell_type_t> VTK_cell_type;
+            Vector<Vector<VTK::Float_t>> VTK_nodal_field(n_nodal_fields);
+            Vector<std::string> VTK_nodal_field_name(n_nodal_fields);
+            // --------------------------------------------------------
+
+            // RESIZE MEMORY ------------------------------------------
+            VTK_nodes.resize(3*n_nodes);
+            VTK_cell_conn.resize(conn.size());
+            VTK_cell_offset.resize(n_cells+1);
+            VTK_cell_type.resize(n_cells);
+            for (int f = 0; f < n_nodal_fields; ++f)
+            {
+                VTK_nodal_field[f].resize(n_nodes);
+            }
+            // --------------------------------------------------------
+
+            // FILL IN DATA -------------------------------------------
+            for (int n = 0; n < n_nodes; ++n)
+            {
+#if (AMREX_SPACEDIM == 2)
+                VTK_nodes[3*n+0] = nodes[AMREX_SPACEDIM*n+0];
+                VTK_nodes[3*n+1] = nodes[AMREX_SPACEDIM*n+1];
+                VTK_nodes[3*n+2] = 0.0;
+#endif
+#if (AMREX_SPACEDIM == 3)
+                VTK_nodes[3*n+0] = nodes[AMREX_SPACEDIM*n+0];
+                VTK_nodes[3*n+1] = nodes[AMREX_SPACEDIM*n+1];
+                VTK_nodes[3*n+2] = nodes[AMREX_SPACEDIM*n+2];
+#endif
+            }
+
+            for (int k = 0; k < conn.size(); ++k)
+            {
+                VTK_cell_conn[k] = conn[k];
+            }
+            
+            VTK_cell_offset[0];
+            for (int k = 1; k < (n_cells+1); ++k)
+            {
+                VTK_cell_offset[k] = VTK_cell_offset[k-1]+AMREX_D_PICK(2, 4, 8);
+            }
+
+            for (int k = 0; k < n_cells; ++k)
+            {
+                VTK_cell_type[k] = VTK_cell_id;
+            }
+
+            for (int rph = 0; rph < N_PHI; ++rph) VTK_nodal_field_name[rph] = "PHI_"+std::to_string(rph);
+            for (int rf = 0; rf < n_requested_fields; ++rf) VTK_nodal_field_name[N_PHI+rf] = field_names[rf];
+
+            for (int f = 0; f < n_nodal_fields; ++f)
+            {
+                for (int n = 0; n < n_nodes; ++n)
+                {
+                    VTK_nodal_field[f][n] = fields[n_nodal_fields*n+f];
+                }
+            }
+            // --------------------------------------------------------
+
+            // DUMP HEADER FILE ---------------------------------------
+            if (amrex::ParallelDescriptor::IOProcessor())
+            {
+                VTK::PrintHeaderFile_VTU(dst_folder, filename_root, time_id, time_id_max, {}, VTK_nodal_field_name);
+            }
+            // --------------------------------------------------------
+
+            // DUMP DATA FILE -----------------------------------------
+            filepath = GetOutputFilepath(dst_folder, filename_root, time_id, time_id_max)+".vtu";
+
+            VTK::PrintUnstructuredGridData_VTU(filepath,
+                                               n_nodes,
+                                               n_cells,
+                                               VTK_nodes,
+                                               VTK_cell_conn,
+                                               VTK_cell_offset,
+                                               VTK_cell_type,
+                                               {},
+                                               {},
+                                               VTK_nodal_field,
+                                               VTK_nodal_field_name,
+                                               "binary");
+            // --------------------------------------------------------
+        }
+        // ============================================================
+
+        // ALIGN PROCESSORS ==========
+        ParallelDescriptor::Barrier();
+        // ===========================
+    }
+    // ################################################################
+
+
+
+
     template<typename IBVP_CLASS>
     Real ImplicitMesh_PostProcessedEvalErrorNorm(const Real & t,
                        const ImplicitGeometry<N_PHI, N_DOM> & iGeom,
@@ -1813,7 +2310,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                 // CYCLE OVER THE UNKNOWN FIELDS
                 //for (int ru = 0; ru < N_U; ++ru)
-                for (int ru = 0; ru < 1; ++ru)
+                for (int ru = 0; ru < 1; ++ru) // only do the first domain
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
@@ -2453,6 +2950,25 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         err = ImplicitMesh_PostProcessedEvalErrorNorm(t,iGeom,MatFactory,IBVP,DG_star_pos_fab,DG_star_data);
         
         amrex::Print() << "| Post-processed Error: " << std::scientific << std::setprecision(5) << std::setw(12) << err << std::endl;
+
+
+        const std::string dG_order = "p"+std::to_string(sp);
+        std::string ics_type;
+        std::string bcs_type;
+        std::string dst_folder;
+
+        ics_type = "ICS_Gaussian";
+        bcs_type = "BCS_periodic";
+        dst_folder = "./IBVP_"+std::to_string(AMREX_SPACEDIM)+"d_Linear_Advection/"+ics_type+"_"+bcs_type+"_"+dG_order+"/";
+        int n = 0;
+        amrex::Real time = t;
+        std::vector<int> field_domains = {0};
+        std::vector<std::string> field_names = {"U0"};
+        
+
+        iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, 10);
+        Export_VTK_Implicit_mesh_Postprocessing(dst_folder, "Solution", n, 10, field_domains, field_names, time, iGeom, MatFactory, IBVP ,DG_star_pos_fab,DG_star_data);
+
 
     }
 
