@@ -1755,6 +1755,15 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
         const GpuArray<Real, AMREX_SPACEDIM> J = iGeom._J;
 
+        // IMPLICIT MESH
+#ifdef AMREX_USE_CUDA
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_device_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_device_mem.data();
+#else
+        const Real * eDomQuad_mem_ptr = iGeom.eDomQuad_host_mem.data();
+        const Real * space_Dom_BF_mem_ptr = MatFactory.space_Dom_BF_host_mem.data();
+#endif
+
         // STANDARD ELEMENT
         const int cell_dom_Ng = std::max(iGeom.uHyperrect.dom_Ng, MatFactory.uHyperrect.dom_Ng);
         const int cell_e = std::max(iGeom.uHyperrect.g, MatFactory.uHyperrect.g);
@@ -1838,8 +1847,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         nodes_pos = 0L;
         conn_pos = 0L;
         conn_offset = 0L;
+        long Num_GQ_points = 0L;
 
         fields_pos = 0L;
+        int dom=field_domains_ptr[0];
 
         for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
         {
@@ -1850,6 +1861,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
             Array4<long> const & grid_info_fab = grid_info.array(mfi);
             Array4<long> const & fields_info_fab = fields_info.array(mfi);
+            Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
 
             n_dG_cells += len.x*len.y*len.z;
 
@@ -1858,25 +1870,31 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             for (int i = lo.x; i <= hi.x; ++i)
             {
                 // UPDATE INFO
+                int dom_Nq;
+                dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
                 grid_info_fab(i,j,k,0) = nodes_pos;
                 grid_info_fab(i,j,k,1) = conn_pos;
                 grid_info_fab(i,j,k,2) = conn_offset;
 
-                nodes_pos += cell_dom_Ng*AMREX_SPACEDIM;
+                nodes_pos += dom_Nq*AMREX_SPACEDIM;
                 conn_pos += cell_conn_len;
-                conn_offset += cell_dom_Ng;
+                conn_offset += dom_Nq;
+                Num_GQ_points +=dom_Nq;
 
                 fields_info_fab(i,j,k,0) = fields_pos;
 
-                fields_pos += cell_dom_Ng*n_total_fields;
+                fields_pos += dom_Nq*n_total_fields;
             }
         }
         // ============================================================
 
         // COMPUTE OUTPUT DATA ========================================
-        nodes.resize(n_dG_cells*cell_dom_Ng*AMREX_SPACEDIM);
+        nodes.resize(Num_GQ_points*AMREX_SPACEDIM);
         conn.resize(n_dG_cells*cell_conn_len);
-        fields.resize(n_dG_cells*cell_dom_Ng*n_total_fields);
+        //fields.resize(n_dG_cells*cell_dom_Ng*n_total_fields);
+
+        
+        fields.resize(Num_GQ_points*n_total_fields);
 
         Real * nodes_ptr = nodes.data();
         long * conn_ptr = conn.data();
@@ -1891,6 +1909,9 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             Array4<Real const> const & X_fab = this->X_new.array(mfi);
             Array4<long> const & DG_star_position_fab = DG_star_pos_fab.array(mfi);
             //Array4<Real const> const & X_star_fab = this->X_star.array(mfi);
+
+            Array4<int const> const & eDomQuad_Nq_fab = iGeom.eDomQuad_Nq.array(mfi);
+            Array4<long const> const & eDomQuad_pos_fab = iGeom.eDomQuad_pos.array(mfi);
 
             
 
@@ -1915,17 +1936,111 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 Real AMREX_D_DECL(dPHIhdx1[N_PHI], dPHIhdx2[N_PHI], dPHIhdx3[N_PHI]);
                 Real AMREX_D_DECL(dUhdx1[N_U], dUhdx2[N_U], dUhdx3[N_U]);
                 Real Fh[DG_MAX_N_FIELDS];
-                int dom, etype;
+                int  etype;//dom,
                 int BF_i, BF_j, BF_k;
                 Real BF_lo[AMREX_SPACEDIM], BF_hi[AMREX_SPACEDIM];
                 long DG_data_pos;
                 const Real * dgptr;
+                const Real * xptr;
+                int dom_Nq;
+                long eDomQuad_pos, qi_pos;
 
                 // Data structures used to compute the distance
                 // functions and the dG solution
                 DG_phi_space_BFX phi(cell_lo, cell_hi, PHI_fab, phi_p, i, j, k, -1);
                 DG_sol_space_BFX sol(X_fab, space_sol_p);
 
+                int ru = 0;
+                //dom = field_domains_ptr[ru];
+                dom_Nq = eDomQuad_Nq_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
+                xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
+
+
+                for (int qi = 0; qi < dom_Nq; ++qi)
+                {
+                    qi_pos = (AMREX_SPACEDIM+1)*qi;
+                    AMREX_D_TERM
+                    (
+                        x[0] = xptr[qi_pos+0]; x[0] = J[0]*x[0]+cell_m[0];,
+                        x[1] = xptr[qi_pos+1]; x[1] = J[1]*x[1]+cell_m[1];,
+                        x[2] = xptr[qi_pos+2]; x[2] = J[2]*x[2]+cell_m[2];
+                        )
+
+                    AMREX_D_TERM
+                    (
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*qi+0] = x[0];,
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*qi+1] = x[1];,
+                        nodes_ptr[cell_nodes_pos+AMREX_SPACEDIM*qi+2] = x[2];
+                    )
+
+                    // FIELDS (DISTANCE FUNCTIONS)
+                    phi._eval_BF_table_(x);
+                    for (int rph = 0; rph < N_PHI; ++rph)
+                    {
+                        phi.set_fab_ptrs(i, j, k, rph);
+
+                        PHIh[rph] = phi._eval_unsafe_();
+
+                        phi._eval_grad_unsafe_(grad);
+                        AMREX_D_TERM
+                        (
+                            dPHIhdx1[rph] = grad[0];,
+                            dPHIhdx2[rph] = grad[1];,
+                            dPHIhdx3[rph] = grad[2];
+                        );
+
+                        fields_ptr[cell_fields_pos+n_total_fields*qi+rph] = PHIh[rph];
+                    }
+
+                    // FIELDS
+                
+                    
+                    etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_i, BF_j, BF_k, BF_lo, BF_hi);
+
+                    sol.set_support(BF_lo, BF_hi);
+                    sol._eval_BF_table_(x);
+
+                    DG_data_pos = DG_star_position_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    dgptr = &DG_star_data[DG_data_pos];
+
+                    sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
+
+                    //Uh[ru] = sol._eval_unsafe_();
+                    Uh[ru] = dgptr[qi];
+                    
+                    //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+
+                    sol._eval_grad_unsafe_(grad);
+                    AMREX_D_TERM
+                    (
+                        dUhdx1[ru] = grad[0];,
+                        dUhdx2[ru] = grad[1];,
+                        dUhdx3[ru] = grad[2];
+                    );
+                    
+                    
+                    
+                    IBVP.F_SOL(t, x,
+                                PHIh, AMREX_D_DECL(dPHIhdx1, dPHIhdx2, dPHIhdx3),
+                                Uh, AMREX_D_DECL(dUhdx1, dUhdx2, dUhdx3),
+                                Fh);
+
+                    //if (etype == DG_ELM_TYPE_EMPTY )
+                    //{
+                    //    Fh[0]=0.0;
+                    //    Fh[1]=0.0;
+
+                    //}
+
+                    fields_ptr[cell_fields_pos+n_total_fields*qi+N_PHI+0] = Fh[0];
+                
+
+
+                }
+
+                /*
                 // UPDATE INFO: NODES AND FIELDS
                 for (int n = 0; n < cell_dom_Ng; ++n)
                 {
@@ -2011,6 +2126,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                         fields_ptr[cell_fields_pos+n_total_fields*n+N_PHI+rf] = Fh[rf];
                     }
                 }
+                */
 
                 // UPDATE INFO: CONNECTIVITY
                 for (int c = 0; c < cell_conn_len; ++c)
@@ -2042,7 +2158,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
             // ------------------------------------------------------------
             
             // WRITE TO FILE: GRID INFORMATION ----------------------------
-            const long grid_n_nodes = n_dG_cells*cell_dom_Ng;
+            const long grid_n_nodes = Num_GQ_points;//  n_dG_cells*cell_dom_Ng;
             const long grid_n_cells = conn.size()/AMREX_D_PICK(2, 4, 8);
             
             fprintf(fp, "DATASET UNSTRUCTURED_GRID\n");
@@ -2120,7 +2236,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         else if (vtk_xml_format)
         {
             // VARIABLES ----------------------------------------------
-            const long n_nodes = n_dG_cells*cell_dom_Ng;
+            const long n_nodes =Num_GQ_points;// n_dG_cells*cell_dom_Ng;
             const long n_cells = conn.size()/AMREX_D_PICK(2, 4, 8);
             const int n_nodal_fields = n_total_fields;
 
