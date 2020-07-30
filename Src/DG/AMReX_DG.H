@@ -590,6 +590,10 @@ public:
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if(etype%10 == DG_ELM_TYPE_SMALL)
+                    {
+                        continue;
+                    }
 
                     // Get the support of the basis functions
                     BF_CELL(i, j, k, etype, BF_i, BF_j, BF_k);
@@ -1771,6 +1775,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         const int cell_conn_len = AMREX_D_PICK(2, 4, 8)*cell_dom_Ne;
         const Gpu::ManagedVector<int> cell_base_conn = Get_VTK_BaseCell_Connectivity(cell_e);
         const int * cell_base_conn_ptr = cell_base_conn.data();
+        const Gpu::ManagedVector<int> cell_base_conn2 = Get_VTK_BaseCell_Connectivity(2*cell_e);
+        const int * cell_base_conn_ptr2 = cell_base_conn2.data();
+
+        //Print()<<"cell_dom_Ng : "<<cell_dom_Ng<<std::endl;
+        //Print()<<"cell_e : "<<cell_e<<std::endl;
+        //Print()<<"cell_dom_Ne : "<<cell_dom_Ne<<std::endl;
 
         /*
         AMREX_D_TERM
@@ -1848,6 +1858,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         conn_pos = 0L;
         conn_offset = 0L;
         long Num_GQ_points = 0L;
+        long Num_conn = 0L;
 
         fields_pos = 0L;
         int dom=field_domains_ptr[0];
@@ -1877,7 +1888,23 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 grid_info_fab(i,j,k,2) = conn_offset;
 
                 nodes_pos += dom_Nq*AMREX_SPACEDIM;
-                conn_pos += cell_conn_len;
+                
+                if(dom_Nq == 2* cell_dom_Ng )
+                {
+                    conn_pos += 2*cell_conn_len;
+                    Num_conn += 2*cell_conn_len;
+                    
+                }
+                else 
+                {
+                    conn_pos += cell_conn_len;
+                    Num_conn += cell_conn_len;
+                    
+                }
+                
+                
+                //conn_pos += cell_conn_len;
+                Num_conn += cell_conn_len;
                 conn_offset += dom_Nq;
                 Num_GQ_points +=dom_Nq;
 
@@ -1890,7 +1917,8 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
         // COMPUTE OUTPUT DATA ========================================
         nodes.resize(Num_GQ_points*AMREX_SPACEDIM);
-        conn.resize(n_dG_cells*cell_conn_len);
+        //conn.resize(n_dG_cells*cell_conn_len);
+        conn.resize(Num_conn);
         //fields.resize(n_dG_cells*cell_dom_Ng*n_total_fields);
 
         
@@ -1899,6 +1927,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
         Real * nodes_ptr = nodes.data();
         long * conn_ptr = conn.data();
         Real * fields_ptr = fields.data();
+        
 
         for (MFIter mfi(this->X_new); mfi.isValid(); ++mfi)
         {
@@ -1956,6 +1985,30 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 eDomQuad_pos = eDomQuad_pos_fab(i,j,k,DG_ELM_DOM_QUAD_N_COMP_PER_DOM*dom);
                 xptr =  &eDomQuad_mem_ptr[eDomQuad_pos];
 
+                etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_i, BF_j, BF_k, BF_lo, BF_hi);
+
+                
+                if(etype%10 == DG_ELM_TYPE_LARGE)
+                {
+                    // Print()<<"Large : "<<dom_Nq<<std::endl;
+
+                }
+                else if (etype%10 == DG_ELM_TYPE_SMALL)
+                {
+                    // Print()<<"Small : "<<dom_Nq << " i "<< i << " j "<< j << " k" << k<<std::endl;
+
+                }
+                else if(etype%10 == DG_ELM_TYPE_ENTIRE)
+                {
+                    // Print()<<"Entire: "<<dom_Nq<<std::endl;
+                }
+                else
+                {
+                    // Print()<<"Empty: "<<dom_Nq<<std::endl;
+                }
+                
+
 
                 for (int qi = 0; qi < dom_Nq; ++qi)
                 {
@@ -1995,10 +2048,6 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                     // FIELDS
                 
-                    
-                    etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
-                    BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_i, BF_j, BF_k, BF_lo, BF_hi);
-
                     sol.set_support(BF_lo, BF_hi);
                     sol._eval_BF_table_(x);
 
@@ -2129,10 +2178,51 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 */
 
                 // UPDATE INFO: CONNECTIVITY
+
                 for (int c = 0; c < cell_conn_len; ++c)
                 {
-                    conn_ptr[cell_conn_pos+c] = cell_base_conn_ptr[c]+cell_conn_offset;
+                        conn_ptr[cell_conn_pos+c] = cell_base_conn_ptr[c]+cell_conn_offset;
                 }
+               
+                /*
+
+                if (dom_Nq == 2*cell_dom_Ng)
+                {
+                        if(etype%10 == DG_ELM_TYPE_LARGE)
+                    {
+                        Print()<<"Large : "<<dom_Nq<<std::endl;
+
+                    }
+                    else if (etype%10 == DG_ELM_TYPE_SMALL)
+                    {
+                        Print()<<"Small : "<<dom_Nq<<std::endl;
+
+                    }
+                    else if(etype%10 == DG_ELM_TYPE_ENTIRE)
+                    {
+                        Print()<<"Entire: "<<dom_Nq<<std::endl;
+                    }
+                    else
+                    {
+                        Print()<<"Empty: "<<dom_Nq<<std::endl;
+                    }
+
+                    for (int c = 0; c < 2*cell_conn_len; ++c)
+                    {
+                        conn_ptr[cell_conn_pos+cell_conn_len+c] = cell_base_conn_ptr2[c]+cell_conn_offset;
+                    }
+
+
+
+                }
+                else
+                {
+                    for (int c = 0; c < cell_conn_len; ++c)
+                    {
+                        conn_ptr[cell_conn_pos+c] = cell_base_conn_ptr[c]+cell_conn_offset;
+                    }
+                }
+                */
             });
             Gpu::synchronize();   
         }
@@ -2430,6 +2520,10 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 {
                     dom = IBVP.F_U2DOM(ru);
                     etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                    if(etype%10 == DG_ELM_TYPE_SMALL)
+                    {
+                        continue;
+                    }
                     DG_data_pos = DG_star_position_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                     dgptr = &DG_star_data[DG_data_pos];
 
@@ -2521,6 +2615,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 #endif
 
         const GpuArray<Real, AMREX_SPACEDIM> iJ = iGeom._iJ;
+        const GpuArray<Real, AMREX_SPACEDIM> J = iGeom._J;
         const GpuArray<Real, AMREX_SPACEDIM> prob_lo = iGeom._prob_lo;
         const GpuArray<Real, AMREX_SPACEDIM> dx = iGeom._dx;
 
@@ -2628,13 +2723,17 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                 const int dom = IBVP.F_U2DOM(ru);
                 const int etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
                 const bool element_is_entire = (etype%10 == DG_ELM_TYPE_ENTIRE) ;
-                const bool element_is_partial = (etype%10 == DG_ELM_TYPE_LARGE || etype%10 == DG_ELM_TYPE_SMALL);
+                const bool element_is_small = (etype%10 == DG_ELM_TYPE_SMALL);
+                const bool element_is_partial = (etype%10 == DG_ELM_TYPE_LARGE || element_is_small);
                 const bool elm_is_empty = (etype == DG_ELM_TYPE_EMPTY);
-                int BF_i, BF_j, BF_k;
+                // int BF_i, BF_j, BF_k;
+                Real BF_lo[AMREX_SPACEDIM], BF_hi[AMREX_SPACEDIM];
                 Real x[AMREX_SPACEDIM];
                 int kernel_choice[AMREX_SPACEDIM]; // 0: symmetric kernel;  -1:  left kernel; 1: right kernel
                 // LOCAL PARAMETERS
                 const Real cell_m[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0]+(i+0.5)*dx[0], prob_lo[1]+(j+0.5)*dx[1], prob_lo[2]+(k+0.5)*dx[2])};
+
+                BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_lo, BF_hi);
 
                 //===================================================
                 // check which type of kernel to use and what are the neighbors needed
@@ -2974,11 +3073,17 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                     // 2) compute one-side kernel convoltuion matrix like the normal case 
                     //    EXCEPT that the basis function is not always the same
+                    if (element_is_small)
+                    {
+                        //Print()<<" Small " << "i "<<i<<" j "<<j<<" k "<< k <<" BF_lo[0] "<< BF_lo[0] << " BF_lo[1] "<<BF_lo[1] << " cell_m[0] " << cell_m[0]<< " cell_m[1] " << cell_m[1]<<std::endl;
+
+                    }
+                    
                    AMREX_D_TERM
                    (
-                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_x,i,j,k, kernel_choice[0], cut_ele_points_x,sp,quad_points,quad_weights);,
-                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_y,i,j,k, kernel_choice[1], cut_ele_points_y,sp,quad_points,quad_weights);,
-                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_z,i,j,k, kernel_choice[2], cut_ele_points_z,sp,quad_points,quad_weights);
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_x, BF_lo[0],BF_hi[0], J[0], cell_m[0], 0, kernel_choice[0], cut_ele_points_x,sp,quad_points,quad_weights);,
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_y, BF_lo[1],BF_hi[1], J[1], cell_m[1], 0, kernel_choice[1], cut_ele_points_y,sp,quad_points,quad_weights);,
+                       cut_ele_get_convolution_matrix_one_side_kernel(cut_ele_conv_matrix_z, BF_lo[2],BF_hi[2], J[2], cell_m[2], 0, kernel_choice[2], cut_ele_points_z,sp,quad_points,quad_weights);
 
                    )
                    

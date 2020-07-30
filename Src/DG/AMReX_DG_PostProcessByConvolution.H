@@ -937,8 +937,106 @@ namespace DG
 
     }
 
+    void Bspine_break_quadrature_Non_Ref_basis(Real * rlt, int deg_Bspine, Real center_point,Real xleft,Real xright, Gpu::ManagedVector<Real>  quad_points, Gpu::ManagedVector<Real>  quad_weights, int Np,const Real & BF_lo, const Real & BF_hi, const Real & mesh_half_h,const Real & xmid)
+    {
+        // Actual integral of Bspline and DG basis function on [xleft, xright]
+        //Output:
+        // rlt: array of Np x 1, contains integral (Bspline, basis_i) for 1<=i<=Np
 
-    void cut_ele_compute_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & AA, const int & i, const int & j, const int & k, const int & kernel_choice,  int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+        Real half_h =  ( xright-xleft ) *0.5;
+        Real mid = (xright + xleft ) *0.5;
+        int Nq = quad_points.size();
+        Real spline_vec[Nq] ;
+        Real spline_pts[Nq];
+        Real basis_pts[Nq];
+
+
+
+        for (int ii = 0; ii < Nq; ++ii)
+        {
+            Real out;
+            spline_pts[ii] = half_h * quad_points[ii] + mid;
+            //basis_pts[ii] = ( center_point - spline_pts[ii] ) * 2.0 ;
+            basis_pts[ii] = mesh_half_h * ( center_point - spline_pts[ii] ) * 2.0  + xmid ;
+            
+            Bspline(spline_pts[ii], deg_Bspine, out);
+            spline_vec[ii] = out ;
+        }
+
+        // evalue basis (up to Np) at basis_pts
+        Real  BF[Nq*Np] ;
+        DG_BF_1d_Table_NxL(Nq, Np-1, basis_pts, BF_lo, BF_hi, BF);
+
+        // perform numerical quadratue int_{xleft, xright}(Bspline, basis_function)
+
+        for (int nn = 0; nn < Np; ++nn)
+        {
+            rlt[nn] = 0;
+            for (int jj = 0; jj < Nq; ++jj)
+            {
+                rlt[nn] += quad_weights[jj] * spline_vec[jj] * BF[jj+nn*Nq];
+            }
+            rlt[nn] *=2.0*half_h;
+
+        }
+
+
+    }
+
+
+    void Bspline_integral_Non_Ref_basis(Real * rlt, int  Np, Real center_point, Real int_upper, Real int_lower, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights, const Real & BF_lo, const Real & BF_hi, const Real & half_h,const Real & xmid)
+    {
+        // Compute the integral (Bspline, DG_basis_function) for each basis function
+        //
+        // Integral_{lower, upper} Bspline( center_point - z/2)*Basis_m(z)dz for m = 0,1,2,..Poly degree
+        //
+        // normally upper = 1.0, lower = -1.0 (integral over one whole element)
+        //
+        //Output
+        // rlt: array of Np x 1, integral for each basis function
+
+        const int deg_Bspine = Np;
+        Real bp_breaks[3];
+        int  break_flag = 0;
+        
+        // Figure out the actual integral domain and type
+        
+        Bspline_breaks(bp_breaks,break_flag,deg_Bspine,center_point, int_upper, int_lower);
+
+        if (break_flag == 1)
+        {
+            for(int nn = 0; nn < Np; ++nn)
+            {
+                rlt[nn] = 0.0;
+            }
+
+        }
+        else if (break_flag == 2 || break_flag == 4)
+        {
+            // in this case there is no break
+            // just have one integral
+            Bspine_break_quadrature_Non_Ref_basis(rlt, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights, Np,BF_lo,BF_hi,half_h,xmid);
+
+        }
+        else
+        {
+            // in this case there is a break
+            // need to add two integrals together
+            Real out1[Np];
+            Real out2[Np];
+            Bspine_break_quadrature_Non_Ref_basis(out1, deg_Bspine,center_point,bp_breaks[0],bp_breaks[1], quad_points,quad_weights,Np, BF_lo,BF_hi,half_h,xmid);
+            Bspine_break_quadrature_Non_Ref_basis(out2, deg_Bspine,center_point,bp_breaks[1],bp_breaks[2], quad_points,quad_weights,Np,BF_lo,BF_hi,half_h,xmid);
+
+            for(int nn = 0; nn < Np; ++nn)
+            {
+                rlt[nn]= out1[nn] + out2[nn];
+            }
+        }
+        
+
+    }
+
+    void cut_ele_compute_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & AA, const Real & BF_lo, const Real & BF_hi, const Real & half_h, const Real & xmid, const bool element_is_small, const int & kernel_choice,  int sp,  Gpu::ManagedVector<Real> points, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {
         const int Npoints = points.size();
         const int Np = sp+1; // k+1
@@ -965,7 +1063,17 @@ namespace DG
 
                         if (jj == 0)
                         {// has to split the integral (because we are considering one side kernel)
-                            Bspline_integral(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights);
+                            if (element_is_small)
+                            {//need to change basis func
+                                Print()<<"yes"<<std::endl;
+                                Bspline_integral_Non_Ref_basis(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights,BF_lo,BF_hi,half_h,xmid );
+
+                            }
+                            else
+                            {// no need to change basis func
+                            
+                                Bspline_integral(rlt_A, Np, center_point_A, iupper, points[nn], quad_points, quad_weights);
+                            }
                         
                         }
                         else
@@ -980,7 +1088,15 @@ namespace DG
 
                         if (jj == 0)
                         {// has to split the integral (because we are considering one side kernel)
-                            Bspline_integral(rlt_A, Np, center_point_A, points[nn], ilower, quad_points, quad_weights);
+                            if (element_is_small)
+                            {//need to change basis func
+                                Bspline_integral_Non_Ref_basis(rlt_A, Np, center_point_A, points[nn], ilower, quad_points, quad_weights,BF_lo,BF_hi,half_h,xmid );
+
+                            }
+                            else
+                            {
+                                Bspline_integral(rlt_A, Np, center_point_A, points[nn], ilower, quad_points, quad_weights);
+                            }
                         
                         }
                         else
@@ -1005,7 +1121,7 @@ namespace DG
 
     }
 
-    void cut_ele_get_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & matrix, const int & i, const int & j, const int & k, const int & kernel_choice, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
+    void cut_ele_get_convolution_matrix_one_side_kernel(Gpu::ManagedVector<Real> & matrix, const Real & BF_lo, const Real & BF_hi, const Real & half_h, const Real & xmid, const bool element_is_small, const int & kernel_choice, Gpu::ManagedVector<Real> points, int sp, Gpu::ManagedVector<Real> quad_points, Gpu::ManagedVector<Real> quad_weights)
     {
         if(kernel_choice == 0)
         {
@@ -1038,7 +1154,7 @@ namespace DG
 
         Gpu::ManagedVector<Real> AA;
 
-        cut_ele_compute_convolution_matrix_one_side_kernel(AA, i,j,k, kernel_choice, sp, points, quad_points, quad_weights);
+        cut_ele_compute_convolution_matrix_one_side_kernel(AA, BF_lo, BF_hi , half_h, xmid, element_is_small, kernel_choice, sp, points, quad_points, quad_weights);
         // step 3. sum A_{n,m,r,j} * cr/2 over r
 
         for (int nn = 0; nn < Npoints; ++nn)
