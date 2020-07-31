@@ -905,6 +905,7 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                     {
                         dom = field_domains_ptr[rf];
                         etype = eType_fab(i,j,k,DG_ELM_TYPE_N_COMP_PER_DOM*dom);
+                        
                         BF_CELL(&prob_lo[0], &dx[0], i, j, k, etype, BF_i, BF_j, BF_k, BF_lo, BF_hi);
 
                         sol.set_support(BF_lo, BF_hi);
@@ -912,14 +913,14 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
 
                         
 
-                        for (int ru = 0; ru < N_U; ++ru)
+                        for (int ru = 0; ru < 1 ; ++ru)
                         {
                             sol.set_fab_ptrs(BF_i, BF_j, BF_k, ru);
 
                             
                             if (export_flag == 1)
                             {
-                                //Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
+                               // Uh[ru] = X_star_fab(i,j,k, n + ru*cell_dom_Ng); // post-processed solution at GQ points.
 
                             }
                             else
@@ -944,6 +945,12 @@ Print() << "(error.sum(1)): " << std::sqrt(error.sum(1)) << std::endl;
                                    PHIh, AMREX_D_DECL(dPHIhdx1, dPHIhdx2, dPHIhdx3),
                                    Uh, AMREX_D_DECL(dUhdx1, dUhdx2, dUhdx3),
                                    Fh);
+
+                        if (etype == DG_ELM_TYPE_EMPTY)
+                        {
+                            Fh[0] = 0;
+                            Fh[1] = 0;
+                        }
 
                         fields_ptr[cell_fields_pos+n_total_fields*n+N_PHI+rf] = Fh[rf];
                     }

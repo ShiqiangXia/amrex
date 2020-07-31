@@ -347,8 +347,10 @@ amrex::Print() << "#############################################################
     {
         int n = 0;
         amrex::Real time = 0.0;
-        std::vector<int> field_domains = {0, 1};
-        std::vector<std::string> field_names = {"U0", "U1"};
+        //std::vector<int> field_domains = {0, 1};
+        //std::vector<std::string> field_names = {"U0", "U1"};
+        std::vector<int> field_domains = {0};
+        std::vector<std::string> field_names = {"U0"};
         amrex::Print()<<"test"<<std::endl;
 
         iGeom.Export_VTK_Mesh(dst_folder, "Mesh", n, inputs.mesh.n_time_steps);
@@ -401,8 +403,8 @@ amrex::Print() << "| Error: " << std::scientific << std::setprecision(5) << std:
         
         if (inputs.plot_int > 0 && n%inputs.plot_int == 0)
         {
-            std::vector<int> field_domains = {0, 1};
-            std::vector<std::string> field_names = {"U0", "U1"};
+            std::vector<int> field_domains = {0};
+            std::vector<std::string> field_names = {"U0"};
             dG.Export_VTK(dst_folder, "Solution", n, inputs.mesh.n_time_steps, field_domains, field_names, time, iGeom, MatFactory, LinAdv);
         }
         
